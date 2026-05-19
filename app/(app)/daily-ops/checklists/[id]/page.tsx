@@ -94,6 +94,7 @@ export default async function ChecklistRunPage({ params }: PageProps) {
               items={run.items}
               completion={run.completion}
               initialItemCompletions={run.itemCompletions}
+              initialManagerLog={run.managerLog}
             />
           </CardContent>
         </Card>

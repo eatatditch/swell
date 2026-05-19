@@ -12,11 +12,21 @@ import {
   reopenChecklistRun,
   setChecklistItemState,
 } from "@/components/checklists/actions";
+import {
+  EMPTY_SHIFT_NUMBERS,
+  ShiftNumbersFields,
+  ShiftNumbersState,
+  centsToInput,
+  numberToInput,
+  toCents,
+  toGuestCount,
+} from "@/components/daily-ops/logs/shift-numbers-fields";
 import type {
   Checklist,
   ChecklistCompletion,
   ChecklistItem,
   ChecklistItemCompletion,
+  ManagerLog,
 } from "@/lib/types/database";
 
 interface ChecklistRunnerProps {
@@ -24,6 +34,7 @@ interface ChecklistRunnerProps {
   items: ChecklistItem[];
   completion: ChecklistCompletion;
   initialItemCompletions: ChecklistItemCompletion[];
+  initialManagerLog: ManagerLog | null;
 }
 
 interface RowState {
@@ -36,7 +47,11 @@ export function ChecklistRunner({
   items,
   completion,
   initialItemCompletions,
+  initialManagerLog,
 }: ChecklistRunnerProps) {
+  const showShiftNumbers =
+    checklist.kind === "opening" || checklist.kind === "closing";
+
   const [done, setDone] = useState(completion.status === "completed");
   const [completionNotes, setCompletionNotes] = useState(completion.notes ?? "");
   const [rows, setRows] = useState<Record<string, RowState>>(() => {
@@ -50,6 +65,19 @@ export function ChecklistRunner({
     }
     return initial;
   });
+  const [shiftNotes, setShiftNotes] = useState(
+    initialManagerLog?.notes ?? initialManagerLog?.body ?? "",
+  );
+  const [numbers, setNumbers] = useState<ShiftNumbersState>(() =>
+    initialManagerLog
+      ? {
+          sales: centsToInput(initialManagerLog.sales_cents),
+          guests: numberToInput(initialManagerLog.guest_count),
+          comps: centsToInput(initialManagerLog.comps_cents),
+          voids: centsToInput(initialManagerLog.voids_cents),
+        }
+      : EMPTY_SHIFT_NUMBERS,
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -100,6 +128,15 @@ export function ChecklistRunner({
       const res = await completeChecklistRun({
         completionId: completion.id,
         notes: completionNotes || null,
+        managerLog: showShiftNumbers
+          ? {
+              notes: shiftNotes.trim() || null,
+              salesCents: toCents(numbers.sales),
+              guestCount: toGuestCount(numbers.guests),
+              compsCents: toCents(numbers.comps),
+              voidsCents: toCents(numbers.voids),
+            }
+          : null,
       });
       if ("error" in res && res.error) {
         setError(res.error);
@@ -226,6 +263,39 @@ export function ChecklistRunner({
           );
         })}
       </ul>
+
+      {showShiftNumbers ? (
+        <div className="space-y-3 rounded-lg border bg-card p-4">
+          <div>
+            <p className="text-sm font-medium">Shift numbers</p>
+            <p className="text-xs text-muted-foreground">
+              Optional. Saved as a manager log linked to this run.
+            </p>
+          </div>
+          <ShiftNumbersFields
+            value={numbers}
+            onChange={setNumbers}
+            disabled={done || pending}
+            idPrefix={`run-${completion.id}`}
+          />
+          <div className="space-y-1.5">
+            <label
+              htmlFor={`run-${completion.id}-notes`}
+              className="text-sm font-medium"
+            >
+              Notes
+            </label>
+            <Textarea
+              id={`run-${completion.id}-notes`}
+              rows={4}
+              placeholder="VIPs, problems, wins. Anything narrative for the log."
+              value={shiftNotes}
+              onChange={(e) => setShiftNotes(e.target.value)}
+              disabled={done || pending}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Closing notes</label>

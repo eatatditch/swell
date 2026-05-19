@@ -120,6 +120,7 @@ export interface ChecklistRunData {
   items: ChecklistItem[];
   completion: ChecklistCompletion;
   itemCompletions: ChecklistItemCompletion[];
+  managerLog: ManagerLog | null;
 }
 
 export async function getChecklistRun(
@@ -151,16 +152,24 @@ export async function getChecklistRun(
     .maybeSingle();
   if (!completion) return null;
 
-  const { data: itemCompletions } = await supabase
-    .from("checklist_item_completions")
-    .select("*")
-    .eq("completion_id", completion.id);
+  const [{ data: itemCompletions }, { data: managerLog }] = await Promise.all([
+    supabase
+      .from("checklist_item_completions")
+      .select("*")
+      .eq("completion_id", completion.id),
+    supabase
+      .from("manager_logs")
+      .select("*")
+      .eq("checklist_completion_id", completion.id)
+      .maybeSingle(),
+  ]);
 
   return {
     checklist: checklist as Checklist,
     items: (items ?? []) as ChecklistItem[],
     completion: completion as ChecklistCompletion,
     itemCompletions: (itemCompletions ?? []) as ChecklistItemCompletion[],
+    managerLog: (managerLog as ManagerLog | null) ?? null,
   };
 }
 
