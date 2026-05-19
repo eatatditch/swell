@@ -142,3 +142,149 @@ export interface ProfileLite {
   email: string | null;
   avatar_url: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3 — daily ops
+// ---------------------------------------------------------------------------
+
+export type ChecklistKind = "opening" | "closing" | "pre_shift" | "cleaning";
+
+export interface Checklist {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string | null;
+  name: string;
+  kind: ChecklistKind;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface ChecklistItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  checklist_id: string;
+  position: number;
+  label: string;
+  requires_note: boolean;
+}
+
+export type ChecklistCompletionStatus = "in_progress" | "completed";
+
+export interface ChecklistCompletion {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  checklist_id: string;
+  location_id: string;
+  run_date: string;
+  status: ChecklistCompletionStatus;
+  completed_by: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_by: string | null;
+}
+
+export interface ChecklistItemCompletion {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  completion_id: string;
+  item_id: string;
+  checked: boolean;
+  note: string | null;
+  checked_by: string | null;
+  checked_at: string | null;
+}
+
+export type Shift = "am" | "pm" | "all";
+export type HandoffShift = "am" | "pm";
+
+export interface ManagerLog {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  author_id: string | null;
+  location_id: string;
+  log_date: string;
+  shift: Shift;
+  body: string;
+}
+
+export interface ShiftNote {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  author_id: string | null;
+  location_id: string;
+  note_date: string;
+  from_shift: HandoffShift;
+  to_shift: HandoffShift;
+  body: string;
+}
+
+export interface EightySixedItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string;
+  name: string;
+  reason: string | null;
+  until_at: string | null;
+  resolved_at: string | null;
+}
+
+export type MaintenanceStatus = "open" | "in_progress" | "resolved";
+
+export interface MaintenanceIssue {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string;
+  title: string;
+  description: string | null;
+  status: MaintenanceStatus;
+  priority: Priority;
+  reported_by: string | null;
+  assigned_to: string | null;
+  resolved_at: string | null;
+}
+
+export type GuestIncidentSeverity = "low" | "normal" | "high" | "critical";
+export type GuestIncidentStatus = "open" | "closed";
+
+export interface GuestIncident {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string;
+  summary: string;
+  guest_name: string | null;
+  occurred_at: string;
+  severity: GuestIncidentSeverity;
+  status: GuestIncidentStatus;
+  reported_by: string | null;
+}
+
+export type CompVoidKind = "comp" | "void";
+
+export interface CompVoidNote {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string;
+  kind: CompVoidKind;
+  amount_cents: number;
+  reason: string;
+  manager_id: string | null;
+  ticket_ref: string | null;
+  occurred_at: string;
+}

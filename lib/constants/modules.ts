@@ -15,6 +15,11 @@ import {
 
 import type { Role } from "@/lib/types/database";
 
+export interface SubNavItem {
+  label: string;
+  href: string;
+}
+
 export interface ModuleDef {
   slug: string;
   label: string;
@@ -22,6 +27,8 @@ export interface ModuleDef {
   icon: LucideIcon;
   /** Roles allowed to see this module in the sidebar. */
   visibleTo: Role[];
+  /** In-module sub-pages shown when this module is active. */
+  subNav?: SubNavItem[];
 }
 
 const ALL_ROLES: Role[] = [
@@ -60,6 +67,14 @@ export const MODULES: ModuleDef[] = [
       "service_manager",
       "kitchen_manager",
       "team_member",
+    ],
+    subNav: [
+      { label: "Overview", href: "/daily-ops" },
+      { label: "Checklists", href: "/daily-ops/checklists" },
+      { label: "Manager Logs", href: "/daily-ops/logs" },
+      { label: "Issues", href: "/daily-ops/issues" },
+      { label: "86'd Items", href: "/daily-ops/86d" },
+      { label: "Comp / Void", href: "/daily-ops/comp-void" },
     ],
   },
   {
