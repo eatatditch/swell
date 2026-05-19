@@ -21,9 +21,10 @@ type FormValues = z.infer<typeof schema>;
 
 interface LoginFormProps {
   next?: string;
+  disabled?: boolean;
 }
 
-export function LoginForm({ next }: LoginFormProps) {
+export function LoginForm({ next, disabled = false }: LoginFormProps) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
@@ -88,7 +89,11 @@ export function LoginForm({ next }: LoginFormProps) {
         </Alert>
       ) : null}
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isSubmitting || disabled}
+      >
         {isSubmitting ? "Signing in…" : "Sign in"}
       </Button>
     </form>

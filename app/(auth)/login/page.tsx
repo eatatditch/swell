@@ -1,7 +1,8 @@
-import { Waves } from "lucide-react";
+import { Waves, AlertTriangle } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { isSupabaseConfigured } from "@/lib/env";
 
 interface PageProps {
   searchParams: { next?: string; error?: string };
@@ -13,6 +14,7 @@ const ERROR_LABELS: Record<string, string> = {
 };
 
 export default function LoginPage({ searchParams }: PageProps) {
+  const configured = isSupabaseConfigured();
   const errorLabel = searchParams.error
     ? (ERROR_LABELS[searchParams.error] ?? "Something went wrong. Please try again.")
     : null;
@@ -28,13 +30,34 @@ export default function LoginPage({ searchParams }: PageProps) {
           </p>
         </div>
 
+        {!configured ? (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Setup required</AlertTitle>
+            <AlertDescription className="space-y-2 text-sm">
+              <p>
+                SWELL can&apos;t reach Supabase. Set these environment
+                variables on the deployment, then redeploy:
+              </p>
+              <ul className="ml-4 list-disc font-mono text-xs">
+                <li>NEXT_PUBLIC_SUPABASE_URL</li>
+                <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+                <li>SUPABASE_SERVICE_ROLE_KEY (server-only)</li>
+              </ul>
+              <p className="text-xs">
+                On Vercel: Project → Settings → Environment Variables.
+              </p>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           {errorLabel ? (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{errorLabel}</AlertDescription>
             </Alert>
           ) : null}
-          <LoginForm next={searchParams.next} />
+          <LoginForm next={searchParams.next} disabled={!configured} />
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
