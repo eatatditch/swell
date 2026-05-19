@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/data/empty-state";
 import { LocationGate } from "@/components/daily-ops/location-gate";
 import { ManagerLogComposer } from "@/components/daily-ops/logs/manager-log-composer";
+import { ManagerLogList } from "@/components/daily-ops/logs/manager-log-list";
 import { ShiftHandoffPanel } from "@/components/daily-ops/logs/shift-handoff-panel";
-import { SHIFT_LABELS } from "@/lib/constants/daily-ops";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/get-user";
 import { resolveActiveLocation } from "@/lib/auth/active-location";
@@ -57,12 +57,32 @@ export default async function DailyOpsLogsPage() {
       .limit(50),
   ]);
 
+  if (logsRes.error) console.error("manager_logs select:", logsRes.error);
+  if (notesRes.error) console.error("shift_notes select:", notesRes.error);
+
   const logs = (logsRes.data ?? []) as (ManagerLog & {
     author: ProfileLite | null;
   })[];
   const notes = (notesRes.data ?? []) as (ShiftNote & {
     author: ProfileLite | null;
   })[];
+
+  const completionIds = logs
+    .map((l) => l.checklist_completion_id)
+    .filter((id): id is string => !!id);
+  let runLinks: Record<string, string> = {};
+  if (completionIds.length > 0) {
+    const { data: completions } = await supabase
+      .from("checklist_completions")
+      .select("id, checklist_id")
+      .in("id", completionIds);
+    runLinks = Object.fromEntries(
+      (completions ?? []).map((c) => [
+        c.id as string,
+        `/daily-ops/checklists/${c.checklist_id as string}`,
+      ]),
+    );
+  }
 
   return (
     <>
@@ -96,22 +116,12 @@ export default async function DailyOpsLogsPage() {
               description="Post the first entry above."
             />
           ) : (
-            <ul className="space-y-2">
-              {logs.map((l) => (
-                <li
-                  key={l.id}
-                  className="rounded-lg border bg-card p-4"
-                >
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {l.log_date} · {SHIFT_LABELS[l.shift]} ·{" "}
-                    {l.author?.full_name ?? l.author?.email ?? "Unknown"}
-                  </p>
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed">
-                    {l.body}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <ManagerLogList
+              logs={logs}
+              currentUserId={profile.id}
+              currentUserRole={profile.role}
+              runLinks={runLinks}
+            />
           )}
         </TabsContent>
         <TabsContent value="handoff">

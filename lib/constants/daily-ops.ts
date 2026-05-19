@@ -3,6 +3,7 @@ import type {
   CompVoidKind,
   HandoffShift,
   MaintenanceStatus,
+  ManagerLog,
   Shift,
 } from "@/lib/types/database";
 
@@ -58,4 +59,20 @@ export function formatCents(amountCents: number): string {
 
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export function managerLogPreview(
+  log: Pick<
+    ManagerLog,
+    "notes" | "body" | "sales_cents" | "guest_count" | "comps_cents" | "voids_cents"
+  >,
+): string {
+  if (log.notes) return log.notes;
+  if (log.body) return log.body;
+  const bits: string[] = [];
+  if (log.sales_cents != null) bits.push(`Sales ${formatCents(log.sales_cents)}`);
+  if (log.guest_count != null) bits.push(`${log.guest_count} guests`);
+  if (log.comps_cents != null) bits.push(`Comps ${formatCents(log.comps_cents)}`);
+  if (log.voids_cents != null) bits.push(`Voids ${formatCents(log.voids_cents)}`);
+  return bits.join(" · ") || "—";
 }
