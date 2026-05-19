@@ -1,56 +1,48 @@
-# SWELL Project Instructions
+# SWELL
 
-We are building SWELL, the internal operating system for Ditch.
+**SWELL** = Systems, Workflow, Execution, Leadership, Learning.
 
-SWELL stands for:
-Systems, Workflow, Execution, Leadership, Learning.
+Internal operating system for Ditch. Built on Next.js + Supabase.
 
-The goal is to create one unified internal web app for Ditch restaurant leadership.
+## Planning docs
 
-Stack:
-- Next.js
-- Vercel
-- Supabase
-- Tailwind
-- shadcn/ui
-- React Hook Form
-- Zod
-- Recharts
+Read these first:
 
-Core users:
-- Founder/Admin
-- General Manager
-- Service Manager
-- Kitchen Manager/Chef
-- Marketing Manager
-- Catering Manager
-- Team Member
+- [`PRODUCT_BLUEPRINT.md`](./PRODUCT_BLUEPRINT.md) — vision, modules, scope.
+- [`DATABASE_SCHEMA_PLAN.md`](./DATABASE_SCHEMA_PLAN.md) — schema, RLS, storage.
+- [`BUILD_PHASES.md`](./BUILD_PHASES.md) — phased build plan.
+- [`ROLE_PERMISSIONS.md`](./ROLE_PERMISSIONS.md) — role × module matrix.
+- [`ROUTE_MAP.md`](./ROUTE_MAP.md) — all app routes.
+- [`COMPONENT_PLAN.md`](./COMPONENT_PLAN.md) — component catalog.
+- [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) — Supabase configuration.
 
-Core locations:
-- Bay Shore
-- Port Jefferson
-- Kings Park
-- Company-wide
+## Stack
 
-Core modules:
-- Dashboard
-- Daily Ops
-- Kitchen
-- Training
-- Catering & Events
-- Marketing
-- Guest Experience
-- Specs & Menus
-- Scoreboard
-- Admin
+Next.js · TypeScript · Supabase · Tailwind · shadcn/ui · React Hook Form · Zod · Recharts · Vercel.
 
-Rules:
-- Build cleanly and modularly.
-- Do not over-engineer.
-- Do not create fake demo logic where real database logic is needed.
-- Use Supabase for auth, database, and storage.
-- Use role-based permissions.
-- Every major table should include created_at, updated_at, created_by, location_id when relevant, and status when relevant.
-- Every workflow should have clear ownership.
-- Prioritize simple, usable restaurant operations over fancy tech.
-- Do not build AI features until the core system works.
+## Local development
+
+```bash
+npm install
+cp .env.example .env.local
+# fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+
+# optional: run Supabase locally
+npx supabase start
+npx supabase db reset
+
+npm run dev
+```
+
+App runs on http://localhost:3000.
+
+## First admin
+
+1. Sign up at `/login` (sign-up is on locally).
+2. In Supabase Studio (http://localhost:54323), open `public.profiles` and set the new user's `role` to `founder_admin`.
+3. In `public.user_location_assignments`, insert a row pointing to the `company_wide` location.
+4. Reload — you should see all modules in the sidebar and access to `/admin`.
+
+## Current status
+
+Phase 1 — Foundation. Auth, role-based shell, location switcher, empty module pages, admin shell, and the initial database migration are in place. Module features are built in subsequent phases per `BUILD_PHASES.md`.
