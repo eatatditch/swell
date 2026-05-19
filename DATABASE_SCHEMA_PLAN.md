@@ -142,10 +142,34 @@ created_at    timestamptz
 
 ---
 
-## 3. Phase 2 Shared System Objects (sketch)
+## 3. Phase 2 Shared System Objects
 
 Built once, used everywhere. Built in Phase 2 before any module's
 features need them.
+
+**Polymorphic association.** `tasks.source_*`, `comments.parent_*`,
+`attachments.parent_*`, and `activity_log.object_*` all use a
+`(<type>, <id>)` pair. `<type>` is a free-form string naming the parent
+table (e.g. `'manager_log'`, `'catering_lead'`, `'task'`). We pay the
+"no FK integrity" cost in exchange for one shared mechanism across every
+module. RLS on these tables is permissive at the application level; the
+parent module's own RLS gates whether a user can read the row whose id
+they hold. Comments and attachments are additionally creator-scoped for
+edits / deletes.
+
+**Activity logging.** Phase 2 logs activity from **server actions**
+rather than DB triggers. Server actions know the actor's intent
+(verb + summary) more precisely than a generic trigger can. We add
+triggers later only if a logging pattern proves repetitive across
+modules.
+
+**Immutability.**
+
+- `attachments` rows are immutable once created. To "edit" an
+  attachment, delete the row and insert a new one. There is no
+  `updated_at` column.
+- `activity_log` rows are append-only. No `updated_at`, no
+  user-initiated update / delete policies.
 
 ### `tasks`
 
