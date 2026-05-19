@@ -211,7 +211,15 @@ export interface ManagerLog {
   location_id: string;
   log_date: string;
   shift: Shift;
-  body: string;
+  // `body` is the legacy single-narrative column; new entries go in `notes`
+  // and the column is preserved for backwards compatibility with existing data.
+  body: string | null;
+  sales_cents: number | null;
+  guest_count: number | null;
+  comps_cents: number | null;
+  voids_cents: number | null;
+  notes: string | null;
+  checklist_completion_id: string | null;
 }
 
 export interface ShiftNote {
