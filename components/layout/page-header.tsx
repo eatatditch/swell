@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
 }
@@ -31,7 +31,7 @@ export function PageHeader({
           />
         </div>
         {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <div className="text-sm text-muted-foreground">{description}</div>
         ) : null}
       </div>
       {action ? <div className="flex shrink-0 gap-2">{action}</div> : null}

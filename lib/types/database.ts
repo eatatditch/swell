@@ -758,3 +758,108 @@ export interface EventReviewRequest {
   link: string | null;
   notes: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Catering inquiry forms (Phase E)
+// ---------------------------------------------------------------------------
+
+export type FormFieldType =
+  | "text"
+  | "textarea"
+  | "email"
+  | "phone"
+  | "number"
+  | "date"
+  | "time"
+  | "select"
+  | "radio"
+  | "checkbox_group"
+  | "checkbox"
+  | "hidden";
+
+// Which catering_leads column a field's value should map into on submission.
+export type LeadFieldMapping =
+  | "event_type"
+  | "desired_date"
+  | "party_size"
+  | "budget_low"
+  | "budget_high"
+  | "estimated_value"
+  | "notes"
+  | "source";
+
+// Which catering_contacts column a field's value should map into.
+export type ContactFieldMapping =
+  | "full_name"
+  | "email"
+  | "phone"
+  | "company";
+
+export interface FormFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface FormField {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  key: string;
+  placeholder?: string;
+  helpText?: string;
+  defaultValue?: string;
+  required: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  options?: FormFieldOption[];
+  leadField?: LeadFieldMapping | null;
+  contactField?: ContactFieldMapping | null;
+}
+
+export interface FormRow {
+  id: string;
+  columns: 1 | 2;
+  fields: FormField[];
+}
+
+export interface FormSchema {
+  rows: FormRow[];
+}
+
+export interface FormSettings {
+  submitLabel?: string;
+  successMessage?: string;
+  redirectUrl?: string;
+  honeypotKey?: string;
+  accentColor?: string;
+}
+
+export interface LeadForm {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  schema: FormSchema;
+  settings: FormSettings;
+  active: boolean;
+  submission_count: number;
+  last_submission_at: string | null;
+}
+
+export interface LeadFormSubmission {
+  id: string;
+  created_at: string;
+  form_id: string;
+  lead_id: string | null;
+  contact_id: string | null;
+  payload: Record<string, unknown>;
+  source_url: string | null;
+  ip: string | null;
+  user_agent: string | null;
+}
