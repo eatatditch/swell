@@ -29,6 +29,7 @@ import {
   getCurrentUserGmailAccount,
   listEmailsForLead,
 } from "@/lib/server/gmail";
+import { markEmailsReadInScope } from "@/lib/server/inbox";
 import {
   formatCents,
   formatEventDate,
@@ -48,6 +49,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
     getCurrentUserGmailAccount(),
     listEmailsForLead(lead.id),
   ]);
+  // Burn the unread chip on any inbound mail tied to this lead — the
+  // operator is actively looking at the thread.
+  await markEmailsReadInScope({ leadId: lead.id });
   const canDelete =
     lead.created_by === profile.id || profile.role === "founder_admin";
 

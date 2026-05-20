@@ -12,6 +12,7 @@ import {
   getCurrentUserGmailAccount,
   listEmailsForQuote,
 } from "@/lib/server/gmail";
+import { markEmailsReadInScope } from "@/lib/server/inbox";
 import { formatEventDate } from "@/lib/constants/catering";
 
 interface PageProps {
@@ -28,6 +29,10 @@ export default async function QuoteDetailPage({ params }: PageProps) {
     listEmailsForQuote(quote.id),
     getCurrentUserGmailAccount(),
   ]);
+  await markEmailsReadInScope({
+    leadId: quote.lead_id ?? null,
+    contactId: quote.contact_id,
+  });
   const menus = (
     await Promise.all(menuStubs.map((m) => getMenuFull(m.id)))
   ).filter((m): m is NonNullable<typeof m> => m !== null);
