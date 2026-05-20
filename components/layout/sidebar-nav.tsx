@@ -10,9 +10,10 @@ import type { Role } from "@/lib/types/database";
 interface SidebarNavProps {
   role: Role;
   onNavigate?: () => void;
+  navBadges?: Record<string, number>;
 }
 
-export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
+export function SidebarNav({ role, onNavigate, navBadges }: SidebarNavProps) {
   const pathname = usePathname();
   const items = modulesForRole(role);
 
@@ -43,19 +44,25 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                   const subActive =
                     pathname === s.href ||
                     (s.href !== item.href && pathname.startsWith(`${s.href}/`));
+                  const badge = navBadges?.[s.href] ?? 0;
                   return (
                     <li key={s.href}>
                       <Link
                         href={s.href}
                         onClick={onNavigate}
                         className={cn(
-                          "block rounded-md px-2 py-1 text-xs transition-colors",
+                          "flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors",
                           subActive
                             ? "font-semibold text-primary-foreground"
                             : "text-primary-foreground/60 hover:text-primary-foreground",
                         )}
                       >
-                        {s.label}
+                        <span>{s.label}</span>
+                        {badge > 0 ? (
+                          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-foreground">
+                            {badge > 99 ? "99+" : badge}
+                          </span>
+                        ) : null}
                       </Link>
                     </li>
                   );

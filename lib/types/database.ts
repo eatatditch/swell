@@ -923,4 +923,5 @@ export interface EmailMessage {
   contact_id: string | null;
   lead_id: string | null;
   event_id: string | null;
+  read_at: string | null;
 }

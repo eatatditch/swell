@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { requireUser } from "@/lib/auth/get-user";
 import { ACTIVE_LOCATION_COOKIE } from "@/app/(app)/constants";
+import { countUnreadForCurrentUser } from "@/lib/server/inbox";
 
 export default async function AppLayout({
   children,
@@ -11,6 +12,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const { profile, locations } = await requireUser();
+  const unreadMail = await countUnreadForCurrentUser();
 
   const cookieStore = cookies();
   const stored = cookieStore.get(ACTIVE_LOCATION_COOKIE)?.value ?? null;
@@ -24,7 +26,10 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <Sidebar role={profile.role} />
+      <Sidebar
+        role={profile.role}
+        navBadges={{ "/catering/mail": unreadMail }}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           profile={profile}
