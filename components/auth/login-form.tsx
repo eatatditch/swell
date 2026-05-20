@@ -91,6 +91,7 @@ export function LoginForm({ next, disabled = false }: LoginFormProps) {
 
       <Button
         type="submit"
+        variant="accent"
         className="w-full"
         disabled={isSubmitting || disabled}
       >

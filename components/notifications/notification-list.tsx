@@ -81,11 +81,11 @@ export function NotificationList({
       <ul className="max-h-96 overflow-y-auto">
         {notifications.map((n) => {
           const inner = (
-            <div className="flex items-start gap-3 px-3 py-3 text-sm hover:bg-accent">
+            <div className="flex items-start gap-3 px-3 py-3 text-sm hover:bg-muted">
               <span
                 className={cn(
                   "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                  n.read_at ? "bg-transparent" : "bg-primary",
+                  n.read_at ? "bg-transparent" : "bg-accent",
                 )}
               />
               <div className="min-w-0 flex-1">

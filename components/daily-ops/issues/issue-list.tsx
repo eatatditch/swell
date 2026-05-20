@@ -31,11 +31,9 @@ interface IssueListProps {
 }
 
 const STATUS_PILL: Record<MaintenanceStatus, string> = {
-  open: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100",
-  in_progress:
-    "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100",
-  resolved:
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100",
+  open: "bg-muted text-foreground",
+  in_progress: "bg-accent/15 text-accent",
+  resolved: "bg-primary/15 text-primary",
 };
 
 export function IssueList({ currentUserId, issues }: IssueListProps) {
@@ -113,7 +111,7 @@ export function IssueList({ currentUserId, issues }: IssueListProps) {
                   setStatus(iss.id, e.target.value as MaintenanceStatus)
                 }
                 disabled={pending}
-                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs"
               >
                 {MAINTENANCE_STATUSES.map((s) => (
                   <option key={s} value={s}>

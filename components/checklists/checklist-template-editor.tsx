@@ -161,7 +161,7 @@ export function ChecklistTemplateEditor({
           <Label htmlFor="kind">Kind</Label>
           <select
             id="kind"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
             value={kind}
             onChange={(e) => setKind(e.target.value as ChecklistKind)}
           >
@@ -191,7 +191,7 @@ export function ChecklistTemplateEditor({
             <Label htmlFor="location">Location</Label>
             <select
               id="location"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               value={locationId}
               onChange={(e) => setLocationId(e.target.value)}
             >
@@ -314,7 +314,12 @@ export function ChecklistTemplateEditor({
         >
           Cancel
         </Button>
-        <Button type="button" onClick={submit} disabled={pending}>
+        <Button
+          type="button"
+          variant="accent"
+          onClick={submit}
+          disabled={pending}
+        >
           {pending
             ? "Saving…"
             : mode === "edit"

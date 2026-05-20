@@ -42,7 +42,7 @@ export default async function DailyOpsChecklistsPage() {
         description="Templates and today's runs."
         action={
           canAuthor ? (
-            <Button asChild size="sm" className="gap-1.5">
+            <Button asChild variant="accent" size="sm" className="gap-1.5">
               <Link href="/daily-ops/checklists/new">
                 <Plus className="h-4 w-4" />
                 New template
@@ -117,8 +117,8 @@ async function TodayChecklists({ locationId }: { locationId: string }) {
             <Link
               href={`/daily-ops/checklists/${r.checklist.id}`}
               className={cn(
-                "block rounded-lg border bg-card p-3 transition-colors hover:bg-accent/40",
-                done && "border-emerald-500/40 bg-emerald-500/5",
+                "block rounded-xl border border-border bg-card p-3 transition-shadow hover:shadow-md",
+                done && "border-primary/40 bg-primary/5",
               )}
             >
               <div className="flex items-center justify-between gap-3">
@@ -168,7 +168,7 @@ function TemplateList({
                 ? `/daily-ops/checklists/${t.id}/edit`
                 : `/daily-ops/checklists/${t.id}`
             }
-            className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/40"
+            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 transition-shadow hover:shadow-md"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium">{t.name}</p>

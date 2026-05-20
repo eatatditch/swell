@@ -66,7 +66,7 @@ export function CompVoidForm({ locationId }: CompVoidFormProps) {
           <Label htmlFor="cv-kind">Kind</Label>
           <select
             id="cv-kind"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
             value={kind}
             onChange={(e) => setKind(e.target.value as CompVoidKind)}
             disabled={pending}
@@ -120,7 +120,11 @@ export function CompVoidForm({ locationId }: CompVoidFormProps) {
         </Alert>
       ) : null}
       <div className="flex justify-end">
-        <Button onClick={submit} disabled={pending || !reason.trim() || !amount}>
+        <Button
+          variant="accent"
+          onClick={submit}
+          disabled={pending || !reason.trim() || !amount}
+        >
           {pending ? "Saving…" : "Record"}
         </Button>
       </div>

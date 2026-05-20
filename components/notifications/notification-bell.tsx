@@ -41,7 +41,7 @@ export function NotificationBell({
           {unreadCount > 0 ? (
             <span
               className={cn(
-                "absolute right-1.5 top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground",
+                "absolute right-1.5 top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-foreground",
               )}
             >
               {unreadCount > 9 ? "9+" : unreadCount}

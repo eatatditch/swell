@@ -67,7 +67,7 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
           <Label htmlFor="ml-shift">Shift</Label>
           <select
             id="ml-shift"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
             value={shift}
             onChange={(e) => setShift(e.target.value as Shift)}
             disabled={pending}
@@ -93,7 +93,11 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
         </Alert>
       ) : null}
       <div className="flex justify-end">
-        <Button onClick={submit} disabled={pending || !body.trim()}>
+        <Button
+          variant="accent"
+          onClick={submit}
+          disabled={pending || !body.trim()}
+        >
           {pending ? "Saving…" : "Post log"}
         </Button>
       </div>

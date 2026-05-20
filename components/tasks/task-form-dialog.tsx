@@ -96,7 +96,7 @@ export function TaskFormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button size="sm" className="gap-1.5">
+          <Button variant="accent" size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" />
             New Task
           </Button>
@@ -134,7 +134,7 @@ export function TaskFormDialog({
               <Label htmlFor="priority">Priority</Label>
               <select
                 id="priority"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
                 {...register("priority")}
               >
                 {PRIORITIES.map((p) => (
@@ -148,7 +148,7 @@ export function TaskFormDialog({
               <Label htmlFor="status">Status</Label>
               <select
                 id="status"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
                 {...register("status")}
               >
                 {TASK_STATUSES.filter((s) => s !== "archived").map((s) => (
@@ -179,7 +179,7 @@ export function TaskFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" variant="accent" disabled={isSubmitting}>
               {isSubmitting ? "Creating…" : "Create task"}
             </Button>
           </DialogFooter>

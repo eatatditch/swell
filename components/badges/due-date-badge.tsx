@@ -44,11 +44,11 @@ export function DueDateBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
         overdue
           ? "bg-rose-100 text-rose-900 dark:bg-rose-900/30 dark:text-rose-100"
           : dueToday
-            ? "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100"
+            ? "bg-accent/15 text-accent"
             : "bg-muted text-muted-foreground",
         className,
       )}

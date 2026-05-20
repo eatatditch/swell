@@ -114,7 +114,7 @@ export default async function DailyOpsPage() {
                   <li key={row.checklist.id}>
                     <Link
                       href={`/daily-ops/checklists/${row.checklist.id}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/40"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 transition-shadow hover:shadow-md"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium leading-snug">
@@ -165,7 +165,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-lg border bg-card p-4 transition-colors hover:bg-accent/40"
+      className="group flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <Icon className="h-4 w-4" />

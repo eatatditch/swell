@@ -28,17 +28,17 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
                 active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                  ? "bg-accent/15 text-primary-foreground before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-r-full before:bg-accent"
+                  : "text-primary-foreground/70 hover:bg-primary-foreground/5 hover:text-primary-foreground",
               )}
             >
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
             </Link>
             {active && item.subNav ? (
-              <ul className="ml-7 mt-1 flex flex-col gap-0.5 border-l pl-3">
+              <ul className="ml-7 mt-1 flex flex-col gap-0.5 border-l border-primary-foreground/15 pl-3">
                 {item.subNav.map((s) => {
                   const subActive =
                     pathname === s.href ||
@@ -51,8 +51,8 @@ export function SidebarNav({ role, onNavigate }: SidebarNavProps) {
                         className={cn(
                           "block rounded-md px-2 py-1 text-xs transition-colors",
                           subActive
-                            ? "font-medium text-foreground"
-                            : "text-muted-foreground hover:text-foreground",
+                            ? "font-semibold text-primary-foreground"
+                            : "text-primary-foreground/60 hover:text-primary-foreground",
                         )}
                       >
                         {s.label}

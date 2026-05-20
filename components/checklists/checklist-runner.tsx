@@ -130,7 +130,7 @@ export function ChecklistRunner({
           </p>
           <div className="mt-1 h-2 w-48 max-w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-emerald-500 transition-[width]"
+              className="h-full bg-primary transition-[width]"
               style={{
                 width: total === 0 ? "0%" : `${(checkedCount / total) * 100}%`,
               }}
@@ -138,7 +138,7 @@ export function ChecklistRunner({
           </div>
         </div>
         {done ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Completed
           </span>
@@ -156,9 +156,9 @@ export function ChecklistRunner({
             <li
               key={item.id}
               className={cn(
-                "rounded-lg border bg-card transition-colors",
+                "rounded-xl border bg-card transition-colors",
                 state.checked
-                  ? "border-emerald-500/30 bg-emerald-500/5"
+                  ? "border-primary/40 bg-primary/5"
                   : "border-border",
                 done && "opacity-80",
               )}
@@ -176,7 +176,7 @@ export function ChecklistRunner({
                   className={cn(
                     "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors",
                     state.checked
-                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-input bg-background",
                   )}
                   aria-hidden
@@ -259,6 +259,7 @@ export function ChecklistRunner({
         ) : (
           <Button
             type="button"
+            variant="accent"
             onClick={submitComplete}
             disabled={pending || !allChecked || hasMissingRequiredNote(items, rows)}
             className="gap-2"
