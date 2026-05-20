@@ -198,6 +198,60 @@ export interface GmailMessageDetail {
   };
 }
 
+// =============================================================================
+// Gmail Watch — Pub/Sub push subscription
+// =============================================================================
+
+export interface GmailWatchResult {
+  historyId: string;
+  expiration: string; // ms-epoch as string
+}
+
+// Start (or refresh) a Gmail push subscription for this account. Gmail will
+// publish a notification to the configured Pub/Sub topic every time INBOX
+// (or SENT) changes. The watch is valid up to 7 days and must be re-upped
+// before then; the cron handles renewal when watch_expires_at < 24h.
+export async function watchGmailAccount(
+  account: GmailAccount,
+  topicName: string,
+): Promise<GmailWatchResult> {
+  const accessToken = await getActiveAccessToken(account);
+  const res = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/watch",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        topicName,
+        labelIds: ["INBOX", "SENT"],
+        labelFilterBehavior: "INCLUDE",
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Gmail watch failed: ${res.status} ${body}`);
+  }
+  return (await res.json()) as GmailWatchResult;
+}
+
+// Tell Gmail to stop publishing for this account. Used on disconnect.
+export async function stopGmailWatch(account: GmailAccount): Promise<void> {
+  let accessToken: string;
+  try {
+    accessToken = await getActiveAccessToken(account);
+  } catch {
+    return; // refresh token already dead, nothing we can do
+  }
+  await fetch("https://gmail.googleapis.com/gmail/v1/users/me/stop", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 // Fetch current profile (used to seed history_id on first sync).
 export async function fetchGmailProfile(
   account: GmailAccount,

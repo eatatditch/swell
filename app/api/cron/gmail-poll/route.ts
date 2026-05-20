@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import { syncGmailAccount } from "@/lib/server/email-sync";
+import { watchGmailAccount } from "@/lib/google/gmail";
+import { pubsubConfigured, pubsubTopic } from "@/lib/google/pubsub";
 import type { GmailAccount } from "@/lib/types/database";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +36,34 @@ export async function GET(request: Request) {
     .limit(50);
 
   const results = [];
+  const renewWindowMs = 24 * 60 * 60 * 1000; // refresh watch when <24h left
   for (const account of (accounts ?? []) as GmailAccount[]) {
+    // Renew Gmail watch when it's expiring soon (or missing entirely on an
+    // active account). Cheap: one API call per account, only when needed.
+    if (pubsubConfigured()) {
+      const expiresAt = account.watch_expires_at
+        ? new Date(account.watch_expires_at).getTime()
+        : 0;
+      if (!expiresAt || expiresAt - Date.now() < renewWindowMs) {
+        try {
+          const watch = await watchGmailAccount(account, pubsubTopic());
+          await admin
+            .from("gmail_accounts")
+            .update({
+              watch_history_id: watch.historyId,
+              watch_expires_at: new Date(
+                Number.parseInt(watch.expiration, 10),
+              ).toISOString(),
+            })
+            .eq("id", account.id);
+        } catch (err) {
+          console.error(
+            `[gmail-cron] watch renew failed for ${account.email}:`,
+            err,
+          );
+        }
+      }
+    }
     results.push(await syncGmailAccount(account));
   }
 
