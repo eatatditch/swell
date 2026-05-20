@@ -301,10 +301,29 @@ export interface CompVoidNote {
 // Phase 7 — catering & events
 // ---------------------------------------------------------------------------
 
+export interface CateringContact {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  title: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  source: string | null;
+  tags: string[];
+  notes: string | null;
+}
+
 export type CateringLeadStatus =
-  | "new"
-  | "contacted"
-  | "proposal_sent"
+  | "lead"
+  | "quote_sent"
+  | "follow_up"
   | "booked"
   | "lost";
 
@@ -315,16 +334,15 @@ export interface CateringLead {
   created_by: string | null;
   location_id: string | null;
   owner_id: string | null;
+  contact_id: string;
   status: CateringLeadStatus;
-  contact_name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  company: string | null;
   event_type: string | null;
   desired_date: string | null;
   party_size: number | null;
   budget_low_cents: number | null;
   budget_high_cents: number | null;
+  estimated_value_cents: number | null;
+  pipeline_position: number;
   source: string | null;
   notes: string | null;
   converted_event_id: string | null;
@@ -369,6 +387,7 @@ export interface CateringEvent {
   created_by: string | null;
   owner_id: string | null;
   lead_id: string | null;
+  contact_id: string | null;
   location_id: string;
   status: CateringEventStatus;
   service_type: CateringServiceType;

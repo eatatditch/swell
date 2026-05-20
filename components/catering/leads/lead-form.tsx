@@ -9,31 +9,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  ContactPicker,
+  type ContactPickerValue,
+} from "@/components/catering/contacts/contact-picker";
+import {
   createCateringLead,
   updateCateringLead,
 } from "@/components/catering/leads/actions";
 import { centsToDollarString } from "@/lib/constants/catering";
+import type { ContactLite } from "@/lib/server/catering";
 import type { CateringLead, Location } from "@/lib/types/database";
 
 interface LeadFormProps {
   locations: Location[];
+  contacts: ContactLite[];
   defaultLocationId?: string | null;
   lead?: CateringLead;
+  defaultContact?: ContactLite | null;
 }
 
-export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) {
+export function LeadForm({
+  locations,
+  contacts,
+  defaultLocationId,
+  lead,
+  defaultContact,
+}: LeadFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const [contactName, setContactName] = useState(lead?.contact_name ?? "");
-  const [contactEmail, setContactEmail] = useState(lead?.contact_email ?? "");
-  const [contactPhone, setContactPhone] = useState(lead?.contact_phone ?? "");
-  const [company, setCompany] = useState(lead?.company ?? "");
+  const [contactValue, setContactValue] = useState<ContactPickerValue | null>(
+    defaultContact
+      ? { mode: "existing", contactId: defaultContact.id, contact: defaultContact }
+      : null,
+  );
   const [eventType, setEventType] = useState(lead?.event_type ?? "");
   const [desiredDate, setDesiredDate] = useState(lead?.desired_date ?? "");
   const [partySize, setPartySize] = useState(
     lead?.party_size != null ? String(lead.party_size) : "",
+  );
+  const [estimatedValue, setEstimatedValue] = useState(
+    centsToDollarString(lead?.estimated_value_cents ?? null),
   );
   const [budgetLow, setBudgetLow] = useState(
     centsToDollarString(lead?.budget_low_cents ?? null),
@@ -47,21 +64,48 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
     lead?.location_id ?? defaultLocationId ?? "",
   );
 
+  const canSubmit = (() => {
+    if (!contactValue) return false;
+    if (contactValue.mode === "new") {
+      return contactValue.draft.fullName.trim().length > 0;
+    }
+    return true;
+  })();
+
   function submit() {
     setError(null);
-    if (!contactName.trim()) {
+    if (!contactValue) {
+      setError("Pick or create a contact");
+      return;
+    }
+    if (
+      contactValue.mode === "new" &&
+      !contactValue.draft.fullName.trim()
+    ) {
       setError("Contact name is required");
       return;
     }
     startTransition(async () => {
+      const contactRef =
+        contactValue.mode === "existing"
+          ? { contactId: contactValue.contactId }
+          : {
+              newContact: {
+                fullName: contactValue.draft.fullName.trim(),
+                email: contactValue.draft.email || null,
+                phone: contactValue.draft.phone || null,
+                company: contactValue.draft.company || null,
+              },
+            };
+
       const payload = {
-        contactName: contactName.trim(),
-        contactEmail: contactEmail || null,
-        contactPhone: contactPhone || null,
-        company: company || null,
+        ...contactRef,
         eventType: eventType || null,
         desiredDate: desiredDate || null,
         partySize: partySize ? Number.parseInt(partySize, 10) : null,
+        estimatedValue: estimatedValue
+          ? Number.parseFloat(estimatedValue)
+          : null,
         budgetLow: budgetLow ? Number.parseFloat(budgetLow) : null,
         budgetHigh: budgetHigh ? Number.parseFloat(budgetHigh) : null,
         source: source || null,
@@ -85,50 +129,12 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
 
   return (
     <div className="space-y-6 rounded-2xl border bg-card p-6">
-      <section className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="lf-name">Contact name *</Label>
-          <Input
-            id="lf-name"
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-            placeholder="Jane Doe"
-            autoFocus
-            disabled={pending}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lf-company">Company / organization</Label>
-          <Input
-            id="lf-company"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            placeholder="Optional"
-            disabled={pending}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lf-email">Email</Label>
-          <Input
-            id="lf-email"
-            type="email"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="jane@example.com"
-            disabled={pending}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lf-phone">Phone</Label>
-          <Input
-            id="lf-phone"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="(631) 555-0123"
-            disabled={pending}
-          />
-        </div>
-      </section>
+      <ContactPicker
+        contacts={contacts}
+        value={contactValue}
+        onChange={setContactValue}
+        disabled={pending}
+      />
 
       <section className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -137,7 +143,7 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
             id="lf-eventtype"
             value={eventType}
             onChange={(e) => setEventType(e.target.value)}
-            placeholder="Wedding, rehearsal dinner, etc."
+            placeholder="Wedding, rehearsal dinner, corporate lunch…"
             disabled={pending}
           />
         </div>
@@ -185,7 +191,24 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-2">
+          <Label htmlFor="lf-value">Estimated deal value ($)</Label>
+          <Input
+            id="lf-value"
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={estimatedValue}
+            onChange={(e) => setEstimatedValue(e.target.value)}
+            placeholder="0.00"
+            disabled={pending}
+          />
+          <p className="text-xs text-muted-foreground">
+            Shows up in the pipeline value summary.
+          </p>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="lf-blow">Budget low ($)</Label>
           <Input
@@ -214,17 +237,18 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
             disabled={pending}
           />
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="lf-source">Source</Label>
-          <Input
-            id="lf-source"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            placeholder="Website form, referral, walk-in…"
-            disabled={pending}
-          />
-        </div>
       </section>
+
+      <div className="space-y-2">
+        <Label htmlFor="lf-source">Source</Label>
+        <Input
+          id="lf-source"
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          placeholder="Website form, referral, walk-in…"
+          disabled={pending}
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="lf-notes">Notes</Label>
@@ -257,7 +281,7 @@ export function LeadForm({ locations, defaultLocationId, lead }: LeadFormProps) 
           type="button"
           variant="accent"
           onClick={submit}
-          disabled={pending || !contactName.trim()}
+          disabled={pending || !canSubmit}
         >
           {pending ? "Saving…" : lead ? "Save changes" : "Save lead"}
         </Button>

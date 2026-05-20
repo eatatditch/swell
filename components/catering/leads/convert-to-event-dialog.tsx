@@ -18,10 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { convertLeadToEvent } from "@/components/catering/leads/actions";
-import type { CateringLead, Location } from "@/lib/types/database";
+import type { LeadWithOwner } from "@/lib/server/catering";
+import type { Location } from "@/lib/types/database";
 
 interface ConvertToEventDialogProps {
-  lead: CateringLead;
+  lead: LeadWithOwner;
   locations: Location[];
 }
 
@@ -33,7 +34,7 @@ export function ConvertToEventDialog({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState(
-    `${lead.contact_name}${lead.event_type ? ` — ${lead.event_type}` : ""}`,
+    `${lead.contact.full_name}${lead.event_type ? ` — ${lead.event_type}` : ""}`,
   );
   const [eventDate, setEventDate] = useState(lead.desired_date ?? "");
   const [locationId, setLocationId] = useState<string>(

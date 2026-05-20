@@ -23,7 +23,6 @@ import { getCateringOverview, listLeads } from "@/lib/server/catering";
 import {
   formatCents,
   formatEventDate,
-  LEAD_STATUS_LABELS,
 } from "@/lib/constants/catering";
 import { LeadStatusBadge } from "@/components/catering/status-badges";
 
@@ -52,7 +51,7 @@ export default async function CateringOverviewPage() {
           <Button asChild variant="accent" size="sm" className="gap-1.5">
             <Link href="/catering/leads/new">
               <Plus className="h-4 w-4" />
-              New lead
+              New deal
             </Link>
           </Button>
         }
@@ -119,11 +118,11 @@ export default async function CateringOverviewPage() {
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">
-                          {lead.contact_name}
-                          {lead.company ? (
+                          {lead.contact.full_name}
+                          {lead.contact.company ? (
                             <span className="text-muted-foreground">
                               {" "}
-                              · {lead.company}
+                              · {lead.contact.company}
                             </span>
                           ) : null}
                         </p>
@@ -160,10 +159,6 @@ export default async function CateringOverviewPage() {
         </Card>
       </div>
 
-      <p className="sr-only">
-        Pipeline stage colors:
-        {Object.values(LEAD_STATUS_LABELS).join(", ")}
-      </p>
     </>
   );
 }
