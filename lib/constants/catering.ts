@@ -13,36 +13,54 @@ import type {
 } from "@/lib/types/database";
 
 export const LEAD_STATUSES: CateringLeadStatus[] = [
-  "new",
-  "contacted",
-  "proposal_sent",
+  "lead",
+  "quote_sent",
+  "follow_up",
   "booked",
   "lost",
 ];
 
 export const LEAD_STATUS_LABELS: Record<CateringLeadStatus, string> = {
-  new: "New",
-  contacted: "Contacted",
-  proposal_sent: "Proposal sent",
+  lead: "Lead",
+  quote_sent: "Quote Sent",
+  follow_up: "Follow up",
   booked: "Booked",
   lost: "Lost",
+};
+
+// Win probability per stage (used to weight pipeline value forecasting).
+export const LEAD_STAGE_PROBABILITY: Record<CateringLeadStatus, number> = {
+  lead: 0.1,
+  quote_sent: 0.5,
+  follow_up: 0.6,
+  booked: 1,
+  lost: 0,
 };
 
 // What stage to move to via "Advance stage" (skips lost).
 export const LEAD_STAGE_FORWARD: Partial<
   Record<CateringLeadStatus, CateringLeadStatus>
 > = {
-  new: "contacted",
-  contacted: "proposal_sent",
-  proposal_sent: "booked",
+  lead: "quote_sent",
+  quote_sent: "follow_up",
+  follow_up: "booked",
+};
+
+// Accent stripe shown on top of each pipeline column.
+export const LEAD_STAGE_STRIPE: Record<CateringLeadStatus, string> = {
+  lead: "bg-accent",
+  quote_sent: "bg-accent",
+  follow_up: "bg-accent",
+  booked: "bg-emerald-500",
+  lost: "bg-rose-400",
 };
 
 export const LEAD_STATUS_COLORS: Record<CateringLeadStatus, string> = {
-  new: "bg-muted text-foreground",
-  contacted: "bg-accent/15 text-accent",
-  proposal_sent: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100",
-  booked: "bg-primary/15 text-primary",
-  lost: "bg-muted text-muted-foreground",
+  lead: "bg-muted text-foreground",
+  quote_sent: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100",
+  follow_up: "bg-accent/15 text-accent",
+  booked: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100",
+  lost: "bg-rose-100 text-rose-900 dark:bg-rose-900/30 dark:text-rose-100",
 };
 
 export const EVENT_STATUSES: CateringEventStatus[] = [

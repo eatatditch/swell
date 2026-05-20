@@ -33,7 +33,9 @@ export async function createFollowup(raw: CreateFollowupInput) {
 
   const { data: lead } = await supabase
     .from("catering_leads")
-    .select("id, contact_name, location_id, owner_id")
+    .select(
+      "id, location_id, owner_id, contact:catering_contacts!catering_leads_contact_id_fkey(full_name)",
+    )
     .eq("id", v.leadId)
     .maybeSingle();
 
@@ -58,7 +60,10 @@ export async function createFollowup(raw: CreateFollowupInput) {
     verb: "created",
     objectType: "catering_followup",
     objectId: followup.id,
-    summary: `Follow-up for ${lead?.contact_name ?? "lead"}: ${followup.body.slice(0, 80)}`,
+    summary: `Follow-up for ${
+      (lead as { contact?: { full_name?: string } } | null)?.contact?.full_name ??
+      "lead"
+    }: ${followup.body.slice(0, 80)}`,
     locationId: lead?.location_id ?? null,
   });
 

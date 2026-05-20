@@ -42,21 +42,25 @@ export default async function LeadDetailPage({ params }: PageProps) {
     lead.created_by === profile.id || profile.role === "founder_admin";
 
   const canConvert =
-    lead.status === "proposal_sent" ||
-    lead.status === "booked" ||
-    lead.status === "contacted";
+    lead.status === "quote_sent" ||
+    lead.status === "follow_up" ||
+    lead.status === "booked";
+
+  const contact = lead.contact;
+  const subtitle = contact.company
+    ? `${contact.company} · ${lead.event_type ?? "Catering inquiry"}`
+    : lead.event_type ?? "Catering inquiry";
 
   return (
     <>
       <PageHeader
-        title={lead.contact_name}
-        description={
-          lead.company
-            ? `${lead.company} · ${lead.event_type ?? "Catering inquiry"}`
-            : lead.event_type ?? "Catering inquiry"
-        }
+        title={contact.full_name}
+        description={subtitle}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/catering/contacts/${contact.id}`}>View contact</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href={`/catering/leads/${lead.id}/edit`}>Edit</Link>
             </Button>
@@ -94,23 +98,23 @@ export default async function LeadDetailPage({ params }: PageProps) {
               <Separator />
 
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                {lead.contact_phone ? (
+                {contact.phone ? (
                   <Fact icon={Phone} label="Phone">
                     <a
-                      href={`tel:${lead.contact_phone}`}
+                      href={`tel:${contact.phone}`}
                       className="hover:underline"
                     >
-                      {lead.contact_phone}
+                      {contact.phone}
                     </a>
                   </Fact>
                 ) : null}
-                {lead.contact_email ? (
+                {contact.email ? (
                   <Fact icon={Mail} label="Email">
                     <a
-                      href={`mailto:${lead.contact_email}`}
+                      href={`mailto:${contact.email}`}
                       className="hover:underline"
                     >
-                      {lead.contact_email}
+                      {contact.email}
                     </a>
                   </Fact>
                 ) : null}
@@ -124,9 +128,14 @@ export default async function LeadDetailPage({ params }: PageProps) {
                     {lead.party_size}
                   </Fact>
                 ) : null}
+                {lead.estimated_value_cents != null ? (
+                  <Fact label="Deal value">
+                    {formatCents(lead.estimated_value_cents)}
+                  </Fact>
+                ) : null}
                 {lead.budget_low_cents != null ||
                 lead.budget_high_cents != null ? (
-                  <Fact label="Budget">
+                  <Fact label="Budget range">
                     {lead.budget_low_cents != null
                       ? formatCents(lead.budget_low_cents)
                       : "—"}

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
+  CateringContact,
   CateringEvent,
   CateringFollowup,
   CateringLead,
@@ -14,16 +15,31 @@ import type {
   ProfileLite,
 } from "@/lib/types/database";
 
+export type ContactLite = Pick<
+  CateringContact,
+  "id" | "full_name" | "email" | "phone" | "company"
+>;
+
 export type LeadWithOwner = CateringLead & {
   owner: ProfileLite | null;
   creator: ProfileLite | null;
+  contact: ContactLite;
   location: Pick<Location, "id" | "name" | "slug"> | null;
+};
+
+export type ContactWithStats = CateringContact & {
+  lead_count: number;
+  event_count: number;
+  last_activity_at: string | null;
 };
 
 export type EventWithRefs = CateringEvent & {
   owner: ProfileLite | null;
   location: Pick<Location, "id" | "name" | "slug"> | null;
-  lead: { id: string; contact_name: string } | null;
+  lead: {
+    id: string;
+    contact: Pick<CateringContact, "id" | "full_name"> | null;
+  } | null;
 };
 
 export type FollowupWithAssignee = CateringFollowup & {
@@ -40,10 +56,10 @@ export type UgcWithOwner = EventUgcOpportunity & {
 };
 
 const LEAD_SELECT =
-  "*, owner:profiles!catering_leads_owner_id_fkey(id, full_name, email, avatar_url), creator:profiles!catering_leads_created_by_fkey(id, full_name, email, avatar_url), location:locations(id, name, slug)";
+  "*, owner:profiles!catering_leads_owner_id_fkey(id, full_name, email, avatar_url), creator:profiles!catering_leads_created_by_fkey(id, full_name, email, avatar_url), contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name, email, phone, company), location:locations(id, name, slug)";
 
 const EVENT_SELECT =
-  "*, owner:profiles!catering_events_owner_id_fkey(id, full_name, email, avatar_url), location:locations(id, name, slug), lead:catering_leads!catering_events_lead_id_fkey(id, contact_name)";
+  "*, owner:profiles!catering_events_owner_id_fkey(id, full_name, email, avatar_url), location:locations(id, name, slug), lead:catering_leads!catering_events_lead_id_fkey(id, contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name))";
 
 export async function listLeads(opts: {
   locationId?: string | null;
@@ -54,6 +70,8 @@ export async function listLeads(opts: {
   let query = supabase
     .from("catering_leads")
     .select(LEAD_SELECT)
+    .order("status")
+    .order("pipeline_position", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (opts.locationId) {
@@ -63,14 +81,118 @@ export async function listLeads(opts: {
     query = query.eq("status", opts.status);
   }
   if (opts.search && opts.search.trim()) {
+    // Search on contact fields requires a contact subquery — find matching
+    // contact ids first, then filter leads.
     const s = `%${opts.search.trim()}%`;
-    query = query.or(
-      `contact_name.ilike.${s},company.ilike.${s},contact_email.ilike.${s}`,
-    );
+    const { data: matches } = await supabase
+      .from("catering_contacts")
+      .select("id")
+      .or(`full_name.ilike.${s},company.ilike.${s},email.ilike.${s}`);
+    const ids = (matches ?? []).map((m) => m.id);
+    if (ids.length === 0) return [];
+    query = query.in("contact_id", ids);
   }
 
   const { data } = await query;
   return (data ?? []) as LeadWithOwner[];
+}
+
+export async function listContacts(opts: {
+  search?: string;
+}): Promise<ContactWithStats[]> {
+  const supabase = createSupabaseServerClient();
+
+  let query = supabase
+    .from("catering_contacts")
+    .select("*")
+    .order("full_name", { ascending: true });
+
+  if (opts.search && opts.search.trim()) {
+    const s = `%${opts.search.trim()}%`;
+    query = query.or(
+      `full_name.ilike.${s},company.ilike.${s},email.ilike.${s},phone.ilike.${s}`,
+    );
+  }
+
+  const { data: contacts } = await query;
+  const list = (contacts ?? []) as CateringContact[];
+  if (list.length === 0) return [];
+
+  const ids = list.map((c) => c.id);
+
+  const [leadAgg, eventAgg] = await Promise.all([
+    supabase
+      .from("catering_leads")
+      .select("contact_id, updated_at")
+      .in("contact_id", ids),
+    supabase
+      .from("catering_events")
+      .select("contact_id, updated_at")
+      .in("contact_id", ids),
+  ]);
+
+  const counts = new Map<
+    string,
+    { leads: number; events: number; last: string | null }
+  >();
+  for (const id of ids) counts.set(id, { leads: 0, events: 0, last: null });
+
+  for (const l of (leadAgg.data ?? []) as { contact_id: string; updated_at: string }[]) {
+    const c = counts.get(l.contact_id);
+    if (!c) continue;
+    c.leads += 1;
+    if (!c.last || l.updated_at > c.last) c.last = l.updated_at;
+  }
+  for (const e of (eventAgg.data ?? []) as { contact_id: string; updated_at: string }[]) {
+    const c = counts.get(e.contact_id);
+    if (!c) continue;
+    c.events += 1;
+    if (!c.last || e.updated_at > c.last) c.last = e.updated_at;
+  }
+
+  return list.map((c) => {
+    const stats = counts.get(c.id) ?? { leads: 0, events: 0, last: null };
+    return {
+      ...c,
+      lead_count: stats.leads,
+      event_count: stats.events,
+      last_activity_at: stats.last,
+    } satisfies ContactWithStats;
+  });
+}
+
+export async function getContact(id: string): Promise<CateringContact | null> {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from("catering_contacts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return (data as CateringContact | null) ?? null;
+}
+
+export async function listLeadsForContact(
+  contactId: string,
+): Promise<LeadWithOwner[]> {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from("catering_leads")
+    .select(LEAD_SELECT)
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as LeadWithOwner[];
+}
+
+export async function listEventsForContact(
+  contactId: string,
+): Promise<EventWithRefs[]> {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from("catering_events")
+    .select(EVENT_SELECT)
+    .eq("contact_id", contactId)
+    .order("event_date", { ascending: false });
+  return (data ?? []) as EventWithRefs[];
 }
 
 export async function getLead(id: string): Promise<LeadWithOwner | null> {
