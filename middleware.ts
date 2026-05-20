@@ -14,6 +14,10 @@ const PUBLIC_PATHS = [
   "/embed.js",
   // Stripe webhook receives unauth POSTs signed with the webhook secret.
   "/api/webhooks",
+  // Vercel cron endpoints — invoked by the platform with no Supabase
+  // cookie. Auth is enforced inside the route handler via x-vercel-cron
+  // header / CRON_SECRET bearer.
+  "/api/cron",
 ];
 
 function isPublic(pathname: string): boolean {

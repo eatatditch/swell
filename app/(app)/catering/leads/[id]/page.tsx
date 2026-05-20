@@ -18,7 +18,7 @@ import { LeadStageControls } from "@/components/catering/leads/lead-stage-contro
 import { ConvertToEventDialog } from "@/components/catering/leads/convert-to-event-dialog";
 import { ConvertToQuoteButton } from "@/components/catering/leads/convert-to-quote-button";
 import { FollowupList } from "@/components/catering/followups/followup-list";
-import { LeadEmailThread } from "@/components/catering/leads/lead-email-thread";
+import { ConversationThread } from "@/components/catering/emails/conversation-thread";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { requireUser } from "@/lib/auth/get-user";
 import {
@@ -243,11 +243,12 @@ export default async function LeadDetailPage({ params }: PageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LeadEmailThread
+              <ConversationThread
                 leadId={lead.id}
+                contactId={contact.id}
                 contactEmail={contact.email}
                 contactName={contact.full_name}
-                leadName={lead.event_type ?? contact.full_name}
+                subjectSeed={`Catering inquiry — ${lead.event_type ?? contact.full_name}`}
                 emails={emails}
                 gmailConnected={gmailAccount?.status === "active"}
                 gmailEmail={gmailAccount?.email ?? null}

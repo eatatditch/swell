@@ -9,27 +9,33 @@ import { EmailComposer } from "@/components/catering/emails/email-composer";
 import { cn } from "@/lib/utils";
 import type { EmailMessage } from "@/lib/types/database";
 
-interface LeadEmailThreadProps {
-  leadId: string;
+interface ConversationThreadProps {
+  // Where outbound messages should be attached. At least one of these.
+  leadId?: string | null;
+  contactId?: string | null;
+
   contactEmail: string | null;
   contactName: string;
-  leadName?: string;
+  subjectSeed?: string;
+
   emails: EmailMessage[];
   gmailConnected: boolean;
   gmailEmail: string | null;
+  emptyHint?: string;
 }
 
-export function LeadEmailThread({
+export function ConversationThread({
   leadId,
+  contactId,
   contactEmail,
   contactName,
-  leadName,
+  subjectSeed,
   emails,
   gmailConnected,
   gmailEmail,
-}: LeadEmailThreadProps) {
+  emptyHint,
+}: ConversationThreadProps) {
   const [composeOpen, setComposeOpen] = useState(false);
-  const subject = leadName ? `Catering inquiry — ${leadName}` : "Catering inquiry";
 
   if (!gmailConnected) {
     return (
@@ -37,7 +43,7 @@ export function LeadEmailThread({
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
           Connect your Gmail to send and receive replies with{" "}
           <span className="font-semibold text-foreground">{contactName}</span>{" "}
-          right here. Messages on both sides will populate this thread.
+          right here.
         </div>
         <Button asChild variant="accent" size="sm" className="gap-1.5">
           <Link href="/catering/integrations" prefetch={false}>
@@ -52,23 +58,25 @@ export function LeadEmailThread({
   if (!contactEmail) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-        This contact doesn&apos;t have an email address on file. Add one to the
-        contact record to start a conversation.
+        This contact doesn&apos;t have an email address on file. Add one to
+        start a conversation.
       </div>
     );
   }
 
-  // Most recent inbound message becomes the reply target so the thread stays
-  // threaded in Gmail.
   const mostRecentInbound = emails.find((m) => m.direction === "inbound");
+  const defaultSubject = mostRecentInbound?.subject
+    ? mostRecentInbound.subject.startsWith("Re:")
+      ? mostRecentInbound.subject
+      : `Re: ${mostRecentInbound.subject}`
+    : (subjectSeed ?? `Catering follow-up`);
 
   return (
     <div className="space-y-3">
       {emails.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          No emails yet. Send the first one below, or wait for{" "}
-          <span className="font-semibold text-foreground">{contactName}</span>{" "}
-          to reach out — inbound mail syncs every few minutes.
+          {emptyHint ??
+            `No emails with ${contactName} yet. Send the first one below, or wait for inbound mail — it syncs every few minutes.`}
         </div>
       ) : (
         emails.map((m) => <EmailMessageCard key={m.id} message={m} />)
@@ -76,17 +84,12 @@ export function LeadEmailThread({
 
       {composeOpen ? (
         <EmailComposer
-          leadId={leadId}
+          leadId={leadId ?? null}
+          contactId={contactId ?? null}
           contactName={contactName}
           contactEmail={contactEmail}
           fromEmail={gmailEmail ?? "your gmail"}
-          defaultSubject={
-            mostRecentInbound?.subject
-              ? mostRecentInbound.subject.startsWith("Re:")
-                ? mostRecentInbound.subject
-                : `Re: ${mostRecentInbound.subject}`
-              : subject
-          }
+          defaultSubject={defaultSubject}
           inReplyToMessageId={mostRecentInbound?.google_message_id ?? undefined}
           threadId={mostRecentInbound?.thread_id ?? undefined}
           onSent={() => setComposeOpen(false)}
@@ -116,7 +119,6 @@ function EmailMessageCard({ message }: { message: EmailMessage }) {
   const date = message.sent_at
     ? new Date(message.sent_at).toLocaleString()
     : new Date(message.created_at).toLocaleString();
-
   const fullBody = message.body_text ?? message.snippet ?? "";
 
   return (

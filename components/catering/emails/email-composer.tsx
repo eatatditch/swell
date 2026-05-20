@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { sendLeadEmail } from "@/components/catering/emails/actions";
 
 interface EmailComposerProps {
-  leadId: string;
+  leadId?: string | null;
+  contactId?: string | null;
   contactName: string;
   contactEmail: string;
   fromEmail: string;
@@ -24,6 +25,7 @@ interface EmailComposerProps {
 
 export function EmailComposer({
   leadId,
+  contactId,
   contactName,
   contactEmail,
   fromEmail,
@@ -47,7 +49,8 @@ export function EmailComposer({
     }
     startTransition(async () => {
       const res = await sendLeadEmail({
-        leadId,
+        leadId: leadId ?? null,
+        contactId: contactId ?? null,
         to: contactEmail,
         subject: subject.trim(),
         body: body.trim(),
@@ -78,11 +81,11 @@ export function EmailComposer({
         </span>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`compose-subject-${leadId}`} className="text-xs">
+        <Label htmlFor={`compose-subject-${leadId ?? contactId ?? "x"}`} className="text-xs">
           Subject
         </Label>
         <Input
-          id={`compose-subject-${leadId}`}
+          id={`compose-subject-${leadId ?? contactId ?? "x"}`}
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Following up on your catering inquiry"
@@ -90,11 +93,11 @@ export function EmailComposer({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`compose-body-${leadId}`} className="text-xs">
+        <Label htmlFor={`compose-body-${leadId ?? contactId ?? "x"}`} className="text-xs">
           Message
         </Label>
         <Textarea
-          id={`compose-body-${leadId}`}
+          id={`compose-body-${leadId ?? contactId ?? "x"}`}
           rows={6}
           value={body}
           onChange={(e) => setBody(e.target.value)}
