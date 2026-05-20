@@ -125,9 +125,11 @@ export function PublicForm({ slug, schema, settings, embed }: PublicFormProps) {
         <div
           key={row.id}
           className={
-            row.columns === 2
-              ? "grid gap-4 sm:grid-cols-2"
-              : "grid gap-4 grid-cols-1"
+            row.columns === 3
+              ? "grid gap-4 sm:grid-cols-3"
+              : row.columns === 2
+                ? "grid gap-4 sm:grid-cols-2"
+                : "grid gap-4 grid-cols-1"
           }
         >
           {row.fields.map((field) => (

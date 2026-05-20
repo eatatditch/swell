@@ -821,7 +821,7 @@ export interface FormField {
 
 export interface FormRow {
   id: string;
-  columns: 1 | 2;
+  columns: 1 | 2 | 3;
   fields: FormField[];
 }
 
