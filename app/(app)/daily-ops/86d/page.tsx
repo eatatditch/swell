@@ -51,7 +51,8 @@ export default async function EightySixedPage({ searchParams }: PageProps) {
   } else {
     query = query.is("resolved_at", null);
   }
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) console.error("eighty_sixed_items select:", error);
   const items = (data ?? []) as (EightySixedItem & {
     creator: ProfileLite | null;
   })[];

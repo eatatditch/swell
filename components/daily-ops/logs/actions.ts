@@ -7,12 +7,42 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/server/activity";
 import { HANDOFF_SHIFTS, SHIFTS } from "@/lib/constants/daily-ops";
 
-const createLogSchema = z.object({
-  locationId: z.string().uuid(),
-  logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  shift: z.enum(SHIFTS as [string, ...string[]]),
-  body: z.string().min(1, "Body is required").max(10000),
-});
+const moneyCents = z
+  .number()
+  .int()
+  .min(0)
+  .max(1_000_000_000)
+  .optional()
+  .nullable();
+const guestCount = z
+  .number()
+  .int()
+  .min(0)
+  .max(100_000)
+  .optional()
+  .nullable();
+
+const createLogSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    shift: z.enum(SHIFTS as [string, ...string[]]),
+    notes: z.string().max(10000).optional().nullable(),
+    salesCents: moneyCents,
+    guestCount,
+    compsCents: moneyCents,
+    voidsCents: moneyCents,
+    checklistCompletionId: z.string().uuid().optional().nullable(),
+  })
+  .refine(
+    (v) =>
+      (v.notes ?? "").trim().length > 0 ||
+      v.salesCents != null ||
+      v.guestCount != null ||
+      v.compsCents != null ||
+      v.voidsCents != null,
+    { message: "Add notes or at least one number" },
+  );
 
 export type CreateManagerLogInput = z.input<typeof createLogSchema>;
 
@@ -28,6 +58,7 @@ export async function createManagerLog(raw: CreateManagerLogInput) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const v = parsed.data;
+  const trimmedNotes = v.notes?.trim() || null;
 
   const { data: log, error } = await supabase
     .from("manager_logs")
@@ -37,7 +68,13 @@ export async function createManagerLog(raw: CreateManagerLogInput) {
       location_id: v.locationId,
       log_date: v.logDate,
       shift: v.shift,
-      body: v.body.trim(),
+      body: null,
+      notes: trimmedNotes,
+      sales_cents: v.salesCents ?? null,
+      guest_count: v.guestCount ?? null,
+      comps_cents: v.compsCents ?? null,
+      voids_cents: v.voidsCents ?? null,
+      checklist_completion_id: v.checklistCompletionId ?? null,
     })
     .select("*")
     .single();
@@ -50,7 +87,7 @@ export async function createManagerLog(raw: CreateManagerLogInput) {
     verb: "created",
     objectType: "manager_log",
     objectId: log.id,
-    summary: log.body.slice(0, 140),
+    summary: summarizeLog(log),
     locationId: log.location_id,
   });
 
@@ -58,24 +95,58 @@ export async function createManagerLog(raw: CreateManagerLogInput) {
   return { log };
 }
 
-const updateLogSchema = z.object({
-  logId: z.string().uuid(),
-  body: z.string().min(1).max(10000),
-});
+const updateLogSchema = z
+  .object({
+    logId: z.string().uuid(),
+    notes: z.string().max(10000).optional().nullable(),
+    salesCents: moneyCents,
+    guestCount,
+    compsCents: moneyCents,
+    voidsCents: moneyCents,
+  })
+  .refine(
+    (v) =>
+      (v.notes ?? "").trim().length > 0 ||
+      v.salesCents != null ||
+      v.guestCount != null ||
+      v.compsCents != null ||
+      v.voidsCents != null,
+    { message: "Add notes or at least one number" },
+  );
 
-export async function updateManagerLog(raw: z.input<typeof updateLogSchema>) {
+export type UpdateManagerLogInput = z.input<typeof updateLogSchema>;
+
+export async function updateManagerLog(raw: UpdateManagerLogInput) {
   const supabase = createSupabaseServerClient();
   const parsed = updateLogSchema.safeParse(raw);
-  if (!parsed.success) return { error: "Invalid input" };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
   const v = parsed.data;
+  const trimmedNotes = v.notes?.trim() || null;
 
   const { data: log, error } = await supabase
     .from("manager_logs")
-    .update({ body: v.body.trim() })
+    .update({
+      notes: trimmedNotes,
+      body: null,
+      sales_cents: v.salesCents ?? null,
+      guest_count: v.guestCount ?? null,
+      comps_cents: v.compsCents ?? null,
+      voids_cents: v.voidsCents ?? null,
+    })
     .eq("id", v.logId)
     .select("*")
     .single();
   if (error || !log) return { error: error?.message ?? "Could not update" };
+
+  await logActivity({
+    verb: "updated",
+    objectType: "manager_log",
+    objectId: log.id,
+    summary: summarizeLog(log),
+    locationId: log.location_id,
+  });
 
   revalidatePath("/daily-ops", "layout");
   return { log };
@@ -148,4 +219,18 @@ export async function deleteShiftNote(noteId: string) {
   if (error) return { error: error.message };
   revalidatePath("/daily-ops", "layout");
   return { ok: true };
+}
+
+function summarizeLog(log: {
+  notes: string | null;
+  sales_cents: number | null;
+  guest_count: number | null;
+}): string {
+  if (log.notes) return log.notes.slice(0, 140);
+  const bits: string[] = [];
+  if (log.sales_cents != null) {
+    bits.push(`sales $${(log.sales_cents / 100).toFixed(2)}`);
+  }
+  if (log.guest_count != null) bits.push(`${log.guest_count} guests`);
+  return bits.join(" · ") || "Manager log";
 }

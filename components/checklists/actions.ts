@@ -281,14 +281,23 @@ export async function setChecklistItemState(
   return { ok: true };
 }
 
+const managerLogPayloadSchema = z.object({
+  notes: z.string().max(10000).optional().nullable(),
+  salesCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+  guestCount: z.number().int().min(0).max(100_000).optional().nullable(),
+  compsCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+  voidsCents: z.number().int().min(0).max(1_000_000_000).optional().nullable(),
+});
+
 const completeRunSchema = z.object({
   completionId: z.string().uuid(),
   notes: z.string().max(5000).optional().nullable(),
+  managerLog: managerLogPayloadSchema.optional().nullable(),
 });
 
-export async function completeChecklistRun(
-  raw: z.input<typeof completeRunSchema>,
-) {
+export type CompleteChecklistRunInput = z.input<typeof completeRunSchema>;
+
+export async function completeChecklistRun(raw: CompleteChecklistRunInput) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -308,7 +317,7 @@ export async function completeChecklistRun(
       notes: v.notes ?? null,
     })
     .eq("id", v.completionId)
-    .select("*, checklist:checklists(name)")
+    .select("*, checklist:checklists(name, kind)")
     .single();
 
   if (error || !completion) {
@@ -325,8 +334,126 @@ export async function completeChecklistRun(
     locationId: completion.location_id,
   });
 
+  if (v.managerLog) {
+    const kind = (completion as { checklist?: { kind?: string } }).checklist
+      ?.kind;
+    if (kind === "opening" || kind === "closing") {
+      await upsertManagerLogForRun({
+        completionId: completion.id,
+        locationId: completion.location_id,
+        runDate: completion.run_date,
+        kind,
+        userId: user.id,
+        log: v.managerLog,
+      });
+    }
+  }
+
   revalidatePath("/daily-ops", "layout");
   return { completion };
+}
+
+interface UpsertManagerLogArgs {
+  completionId: string;
+  locationId: string;
+  runDate: string;
+  kind: "opening" | "closing";
+  userId: string;
+  log: z.infer<typeof managerLogPayloadSchema>;
+}
+
+async function upsertManagerLogForRun({
+  completionId,
+  locationId,
+  runDate,
+  kind,
+  userId,
+  log,
+}: UpsertManagerLogArgs) {
+  const supabase = createSupabaseServerClient();
+  const notes = log.notes?.trim() || null;
+  const hasContent =
+    (notes && notes.length > 0) ||
+    log.salesCents != null ||
+    log.guestCount != null ||
+    log.compsCents != null ||
+    log.voidsCents != null;
+  if (!hasContent) return;
+
+  const shift = kind === "opening" ? "am" : "pm";
+
+  const { data: existing } = await supabase
+    .from("manager_logs")
+    .select("id")
+    .eq("checklist_completion_id", completionId)
+    .maybeSingle();
+
+  if (existing) {
+    const { data: updated } = await supabase
+      .from("manager_logs")
+      .update({
+        notes,
+        body: null,
+        sales_cents: log.salesCents ?? null,
+        guest_count: log.guestCount ?? null,
+        comps_cents: log.compsCents ?? null,
+        voids_cents: log.voidsCents ?? null,
+      })
+      .eq("id", existing.id)
+      .select("id, location_id")
+      .single();
+    if (updated) {
+      await logActivity({
+        verb: "updated",
+        objectType: "manager_log",
+        objectId: updated.id,
+        summary: managerLogSummary(notes, log.salesCents, log.guestCount),
+        locationId: updated.location_id,
+      });
+    }
+    return;
+  }
+
+  const { data: inserted } = await supabase
+    .from("manager_logs")
+    .insert({
+      created_by: userId,
+      author_id: userId,
+      location_id: locationId,
+      log_date: runDate,
+      shift,
+      body: null,
+      notes,
+      sales_cents: log.salesCents ?? null,
+      guest_count: log.guestCount ?? null,
+      comps_cents: log.compsCents ?? null,
+      voids_cents: log.voidsCents ?? null,
+      checklist_completion_id: completionId,
+    })
+    .select("id, location_id")
+    .single();
+
+  if (inserted) {
+    await logActivity({
+      verb: "created",
+      objectType: "manager_log",
+      objectId: inserted.id,
+      summary: managerLogSummary(notes, log.salesCents, log.guestCount),
+      locationId: inserted.location_id,
+    });
+  }
+}
+
+function managerLogSummary(
+  notes: string | null,
+  salesCents: number | null | undefined,
+  guestCount: number | null | undefined,
+): string {
+  if (notes) return notes.slice(0, 140);
+  const bits: string[] = [];
+  if (salesCents != null) bits.push(`sales $${(salesCents / 100).toFixed(2)}`);
+  if (guestCount != null) bits.push(`${guestCount} guests`);
+  return bits.join(" · ") || "Manager log";
 }
 
 export async function reopenChecklistRun(completionId: string) {

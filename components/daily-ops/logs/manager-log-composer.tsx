@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createManagerLog } from "@/components/daily-ops/logs/actions";
 import {
+  EMPTY_SHIFT_NUMBERS,
+  ShiftNumbersFields,
+  ShiftNumbersState,
+  toCents,
+  toGuestCount,
+} from "@/components/daily-ops/logs/shift-numbers-fields";
+import {
   SHIFTS,
   SHIFT_LABELS,
   todayISO,
@@ -24,14 +31,22 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
   const router = useRouter();
   const [date, setDate] = useState(todayISO());
   const [shift, setShift] = useState<Shift>(currentShift());
-  const [body, setBody] = useState("");
+  const [numbers, setNumbers] = useState<ShiftNumbersState>(EMPTY_SHIFT_NUMBERS);
+  const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const hasAnyNumber =
+    numbers.sales !== "" ||
+    numbers.guests !== "" ||
+    numbers.comps !== "" ||
+    numbers.voids !== "";
+  const canSubmit = notes.trim().length > 0 || hasAnyNumber;
+
   function submit() {
     setError(null);
-    if (!body.trim()) {
-      setError("Body is required");
+    if (!canSubmit) {
+      setError("Add notes or at least one number");
       return;
     }
     startTransition(async () => {
@@ -39,19 +54,24 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
         locationId,
         logDate: date,
         shift,
-        body,
+        notes: notes.trim() || null,
+        salesCents: toCents(numbers.sales),
+        guestCount: toGuestCount(numbers.guests),
+        compsCents: toCents(numbers.comps),
+        voidsCents: toCents(numbers.voids),
       });
       if ("error" in res && res.error) {
         setError(res.error);
         return;
       }
-      setBody("");
+      setNotes("");
+      setNumbers(EMPTY_SHIFT_NUMBERS);
       router.refresh();
     });
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="ml-date">Date</Label>
@@ -80,13 +100,29 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
           </select>
         </div>
       </div>
-      <Textarea
-        rows={5}
-        placeholder="What happened on this shift? Cover counts, VIPs, comps, problems, wins."
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        disabled={pending}
-      />
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Numbers</p>
+        <ShiftNumbersFields
+          value={numbers}
+          onChange={setNumbers}
+          disabled={pending}
+          idPrefix="ml"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="ml-notes">Notes</Label>
+        <Textarea
+          id="ml-notes"
+          rows={5}
+          placeholder="VIPs, comps, problems, wins. Anything narrative."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={pending}
+        />
+      </div>
+
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -96,7 +132,7 @@ export function ManagerLogComposer({ locationId }: ManagerLogComposerProps) {
         <Button
           variant="accent"
           onClick={submit}
-          disabled={pending || !body.trim()}
+          disabled={pending || !canSubmit}
         >
           {pending ? "Saving…" : "Post log"}
         </Button>

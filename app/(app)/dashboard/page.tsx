@@ -18,7 +18,7 @@ import { ActivityFeed } from "@/components/activity/activity-feed";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { TaskList } from "@/components/tasks/task-list";
 import { ROLE_LABELS } from "@/lib/constants/roles";
-import { SHIFT_LABELS } from "@/lib/constants/daily-ops";
+import { SHIFT_LABELS, managerLogPreview } from "@/lib/constants/daily-ops";
 import { requireUser } from "@/lib/auth/get-user";
 import { resolveActiveLocation } from "@/lib/auth/active-location";
 import { getMyOpenTasks } from "@/lib/server/queries";
@@ -119,7 +119,7 @@ export default async function DashboardPage() {
                         "Unknown"}
                     </p>
                     <p className="line-clamp-2 text-sm">
-                      {snapshot.lastManagerLog.body}
+                      {managerLogPreview(snapshot.lastManagerLog)}
                     </p>
                   </Link>
                 ) : (
