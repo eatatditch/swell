@@ -344,6 +344,7 @@ export interface CateringLead {
   estimated_value_cents: number | null;
   pipeline_position: number;
   source: string | null;
+  source_form_id: string | null;
   notes: string | null;
   converted_event_id: string | null;
   lost_reason: string | null;
@@ -836,6 +837,16 @@ export interface FormSettings {
   accentColor?: string;
 }
 
+export type FormSourceChannel =
+  | "instagram"
+  | "website"
+  | "qr_code"
+  | "ad"
+  | "email"
+  | "referral"
+  | "partner"
+  | "other";
+
 export interface LeadForm {
   id: string;
   created_at: string;
@@ -850,6 +861,8 @@ export interface LeadForm {
   active: boolean;
   submission_count: number;
   last_submission_at: string | null;
+  source_channel: FormSourceChannel;
+  source_label: string | null;
 }
 
 export interface LeadFormSubmission {

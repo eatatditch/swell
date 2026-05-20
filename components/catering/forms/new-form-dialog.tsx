@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createLeadForm } from "@/components/catering/forms/actions";
-import type { Location } from "@/lib/types/database";
+import {
+  SOURCE_CHANNEL_LABELS,
+  SOURCE_CHANNEL_ORDER,
+} from "@/lib/forms/schema";
+import type { FormSourceChannel, Location } from "@/lib/types/database";
 
 interface NewFormProps {
   locations: Pick<Location, "id" | "name" | "slug">[];
@@ -19,6 +23,9 @@ export function NewFormPanel({ locations }: NewFormProps) {
   const [name, setName] = useState("");
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [slug, setSlug] = useState("");
+  const [sourceChannel, setSourceChannel] =
+    useState<FormSourceChannel>("website");
+  const [sourceLabel, setSourceLabel] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +36,8 @@ export function NewFormPanel({ locations }: NewFormProps) {
         name: name.trim(),
         locationId,
         slug: slug.trim() || null,
+        sourceChannel,
+        sourceLabel: sourceLabel.trim() || null,
       });
       if ("error" in res && res.error) {
         setError(res.error);
@@ -85,6 +94,41 @@ export function NewFormPanel({ locations }: NewFormProps) {
           Submissions create leads filed against this location.
         </p>
       </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="new-form-channel">Channel</Label>
+          <select
+            id="new-form-channel"
+            value={sourceChannel}
+            onChange={(e) =>
+              setSourceChannel(e.target.value as FormSourceChannel)
+            }
+            disabled={pending}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          >
+            {SOURCE_CHANNEL_ORDER.map((c) => (
+              <option key={c} value={c}>
+                {SOURCE_CHANNEL_LABELS[c]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="new-form-label">Attribution label</Label>
+          <Input
+            id="new-form-label"
+            value={sourceLabel}
+            placeholder="Spring IG ad, Patio QR, …"
+            onChange={(e) => setSourceLabel(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Channel + label get stamped on every lead this form creates so you can
+        track which marketing point each inquiry came from.
+      </p>
 
       {error ? (
         <Alert variant="destructive">

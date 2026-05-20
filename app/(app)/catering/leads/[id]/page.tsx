@@ -145,7 +145,24 @@ export default async function LeadDetailPage({ params }: PageProps) {
                       : "—"}
                   </Fact>
                 ) : null}
-                {lead.source ? (
+                {lead.source_form ? (
+                  <Fact label="Source">
+                    <Link
+                      href={`/catering/forms/${lead.source_form.id}`}
+                      className="text-accent underline-offset-2 hover:underline"
+                    >
+                      {lead.source_form.source_label ?? lead.source_form.name}
+                    </Link>
+                    {lead.source_form.source_label &&
+                    lead.source_form.source_label !==
+                      lead.source_form.name ? (
+                      <span className="text-muted-foreground">
+                        {" · "}
+                        {lead.source_form.name}
+                      </span>
+                    ) : null}
+                  </Fact>
+                ) : lead.source ? (
                   <Fact label="Source">{lead.source}</Fact>
                 ) : null}
                 {lead.location ? (

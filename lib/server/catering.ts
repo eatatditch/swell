@@ -31,6 +31,12 @@ export type LeadWithOwner = CateringLead & {
   creator: ProfileLite | null;
   contact: ContactLite;
   location: Pick<Location, "id" | "name" | "slug"> | null;
+  source_form: {
+    id: string;
+    name: string;
+    source_channel: import("@/lib/types/database").FormSourceChannel;
+    source_label: string | null;
+  } | null;
 };
 
 export type ContactWithStats = CateringContact & {
@@ -62,7 +68,7 @@ export type UgcWithOwner = EventUgcOpportunity & {
 };
 
 const LEAD_SELECT =
-  "*, owner:profiles!catering_leads_owner_id_fkey(id, full_name, email, avatar_url), creator:profiles!catering_leads_created_by_fkey(id, full_name, email, avatar_url), contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name, email, phone, company), location:locations(id, name, slug)";
+  "*, owner:profiles!catering_leads_owner_id_fkey(id, full_name, email, avatar_url), creator:profiles!catering_leads_created_by_fkey(id, full_name, email, avatar_url), contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name, email, phone, company), location:locations(id, name, slug), source_form:lead_forms!catering_leads_source_form_id_fkey(id, name, source_channel, source_label)";
 
 const EVENT_SELECT =
   "*, owner:profiles!catering_events_owner_id_fkey(id, full_name, email, avatar_url), location:locations(id, name, slug), lead:catering_leads!catering_events_lead_id_fkey(id, contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name))";

@@ -50,6 +50,8 @@ import {
   CONTACT_FIELD_LABELS,
   FIELD_TYPE_LABELS,
   LEAD_FIELD_LABELS,
+  SOURCE_CHANNEL_LABELS,
+  SOURCE_CHANNEL_ORDER,
   cryptoId,
 } from "@/lib/forms/schema";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,7 @@ import type {
   FormRow,
   FormSchema,
   FormSettings,
+  FormSourceChannel,
   LeadForm,
 } from "@/lib/types/database";
 
@@ -107,6 +110,10 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
   const [active, setActive] = useState(form.active);
   const [schema, setSchema] = useState<FormSchema>(form.schema);
   const [settings, setSettings] = useState<FormSettings>(form.settings);
+  const [sourceChannel, setSourceChannel] = useState<FormSourceChannel>(
+    form.source_channel,
+  );
+  const [sourceLabel, setSourceLabel] = useState(form.source_label ?? "");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -274,6 +281,8 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
         active,
         schema,
         settings,
+        sourceChannel,
+        sourceLabel: sourceLabel.trim() || null,
       });
       if ("error" in res && res.error) {
         setError(res.error);
@@ -352,17 +361,55 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
           </div>
         </div>
 
-        <div className="space-y-1.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <Label htmlFor="form-description">Public description (optional)</Label>
-          <Textarea
-            id="form-description"
-            rows={2}
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              setDirty(true);
-            }}
-          />
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="space-y-1.5">
+            <Label htmlFor="form-description">Public description (optional)</Label>
+            <Textarea
+              id="form-description"
+              rows={2}
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setDirty(true);
+              }}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="form-channel">Marketing channel</Label>
+              <select
+                id="form-channel"
+                value={sourceChannel}
+                onChange={(e) => {
+                  setSourceChannel(e.target.value as FormSourceChannel);
+                  setDirty(true);
+                }}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              >
+                {SOURCE_CHANNEL_ORDER.map((c) => (
+                  <option key={c} value={c}>
+                    {SOURCE_CHANNEL_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="form-source-label">Attribution label</Label>
+              <Input
+                id="form-source-label"
+                value={sourceLabel}
+                placeholder="e.g. Spring IG ad, Patio QR"
+                onChange={(e) => {
+                  setSourceLabel(e.target.value);
+                  setDirty(true);
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Stamped on every lead this form creates as the lead&apos;s source.
+            Leave the label blank to default to channel + form name.
+          </p>
         </div>
 
         {error ? (

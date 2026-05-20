@@ -2,9 +2,58 @@ import type {
   FormField,
   FormSchema,
   FormSettings,
+  FormSourceChannel,
   LeadFieldMapping,
   ContactFieldMapping,
 } from "@/lib/types/database";
+
+export const SOURCE_CHANNEL_LABELS: Record<FormSourceChannel, string> = {
+  instagram: "Instagram",
+  website: "Website",
+  qr_code: "QR code / in-store",
+  ad: "Paid ad",
+  email: "Email campaign",
+  referral: "Referral",
+  partner: "Partner",
+  other: "Other",
+};
+
+export const SOURCE_CHANNEL_ORDER: FormSourceChannel[] = [
+  "website",
+  "instagram",
+  "qr_code",
+  "ad",
+  "email",
+  "referral",
+  "partner",
+  "other",
+];
+
+// Color hint (Tailwind class) per channel — used for badges in the UI.
+export const SOURCE_CHANNEL_BADGE: Record<FormSourceChannel, string> = {
+  instagram: "bg-fuchsia-100 text-fuchsia-900",
+  website: "bg-sky-100 text-sky-900",
+  qr_code: "bg-amber-100 text-amber-900",
+  ad: "bg-rose-100 text-rose-900",
+  email: "bg-indigo-100 text-indigo-900",
+  referral: "bg-emerald-100 text-emerald-900",
+  partner: "bg-violet-100 text-violet-900",
+  other: "bg-muted text-foreground",
+};
+
+// Build the human-friendly "source" string written onto catering_leads.source
+// when a form submission lands. Prefer the operator's free-form label,
+// fall back to the channel display name + form name.
+export function leadSourceFromForm(form: {
+  source_channel: FormSourceChannel;
+  source_label: string | null;
+  name: string;
+}): string {
+  if (form.source_label && form.source_label.trim()) {
+    return form.source_label.trim();
+  }
+  return `${SOURCE_CHANNEL_LABELS[form.source_channel]} · ${form.name}`;
+}
 
 export const FIELD_TYPE_LABELS: Record<FormField["type"], string> = {
   text: "Short text",
