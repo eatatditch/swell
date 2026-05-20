@@ -116,6 +116,12 @@ export const MODULES: ModuleDef[] = [
       "marketing_manager",
       "catering_manager",
     ],
+    subNav: [
+      { label: "Overview", href: "/catering" },
+      { label: "Leads", href: "/catering/leads" },
+      { label: "Events", href: "/catering/events" },
+      { label: "Calendar", href: "/catering/calendar" },
+    ],
   },
   {
     slug: "marketing",

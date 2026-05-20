@@ -296,3 +296,193 @@ export interface CompVoidNote {
   ticket_ref: string | null;
   occurred_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7 — catering & events
+// ---------------------------------------------------------------------------
+
+export type CateringLeadStatus =
+  | "new"
+  | "contacted"
+  | "proposal_sent"
+  | "booked"
+  | "lost";
+
+export interface CateringLead {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string | null;
+  owner_id: string | null;
+  status: CateringLeadStatus;
+  contact_name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  company: string | null;
+  event_type: string | null;
+  desired_date: string | null;
+  party_size: number | null;
+  budget_low_cents: number | null;
+  budget_high_cents: number | null;
+  source: string | null;
+  notes: string | null;
+  converted_event_id: string | null;
+  lost_reason: string | null;
+  closed_at: string | null;
+}
+
+export type CateringFollowupKind = "call" | "email" | "task";
+
+export interface CateringFollowup {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  lead_id: string;
+  assigned_to: string | null;
+  kind: CateringFollowupKind;
+  body: string;
+  due_at: string | null;
+  done_at: string | null;
+}
+
+export type CateringEventStatus =
+  | "booked"
+  | "confirmed"
+  | "executed"
+  | "canceled";
+
+export type CateringServiceType =
+  | "drop_off"
+  | "buffet"
+  | "plated"
+  | "family_style"
+  | "cocktail"
+  | "food_truck"
+  | "other";
+
+export interface CateringEvent {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  owner_id: string | null;
+  lead_id: string | null;
+  location_id: string;
+  status: CateringEventStatus;
+  service_type: CateringServiceType;
+  title: string;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  guest_count: number | null;
+  headcount_confirmed_at: string | null;
+  venue: string | null;
+  room: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  billing_name: string | null;
+  billing_address: string | null;
+  allergens_notes: string | null;
+  special_requests: string | null;
+  setup_notes: string | null;
+  breakdown_notes: string | null;
+  equipment_notes: string | null;
+  staffing_notes: string | null;
+  beverage_notes: string | null;
+  internal_notes: string | null;
+  total_quoted_cents: number;
+  canceled_at: string | null;
+  cancel_reason: string | null;
+}
+
+export type EventMenuCategory =
+  | "food"
+  | "beverage"
+  | "rental"
+  | "service"
+  | "other";
+
+export interface EventMenuItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  event_id: string;
+  position: number;
+  category: EventMenuCategory;
+  name: string;
+  description: string | null;
+  quantity: number;
+  unit_price_cents: number;
+  total_cents: number;
+}
+
+export type EventPaymentKind = "deposit" | "balance" | "refund" | "gratuity";
+export type EventPaymentStatus = "pending" | "received" | "refunded" | "waived";
+export type EventPaymentMethod = "cash" | "check" | "card" | "ach" | "other";
+
+export interface EventPayment {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  event_id: string;
+  recorded_by: string | null;
+  kind: EventPaymentKind;
+  status: EventPaymentStatus;
+  method: EventPaymentMethod | null;
+  amount_cents: number;
+  due_at: string | null;
+  paid_at: string | null;
+  reference: string | null;
+  notes: string | null;
+}
+
+export type EventUgcContentType =
+  | "photos"
+  | "reel"
+  | "tag"
+  | "feature"
+  | "other";
+
+export type EventUgcStatus = "planned" | "captured" | "posted" | "declined";
+
+export interface EventUgcOpportunity {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  event_id: string;
+  owner_id: string | null;
+  contact_name: string | null;
+  instagram_handle: string | null;
+  content_type: EventUgcContentType;
+  status: EventUgcStatus;
+  planned_for: string | null;
+  posted_link: string | null;
+  notes: string | null;
+}
+
+export type ReviewPlatform =
+  | "google"
+  | "yelp"
+  | "tripadvisor"
+  | "opentable"
+  | "other";
+
+export interface EventReviewRequest {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  event_id: string;
+  platform: ReviewPlatform;
+  request_sent_at: string | null;
+  response_received_at: string | null;
+  rating: number | null;
+  link: string | null;
+  notes: string | null;
+}
