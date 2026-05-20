@@ -19,6 +19,10 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Google didn't return a refresh token. Disconnect at myaccount.google.com → Security → Third-party apps, then try again.",
   userinfo_failed: "Couldn't read your Google account info. Try again.",
   access_denied: "You declined the consent screen.",
+  encryption_failed:
+    "Couldn't securely store your Gmail credentials. Check that GMAIL_TOKEN_ENCRYPTION_KEY is a valid 64-character hex string.",
+  db_write_failed:
+    "Connected to Google, but the Swell database refused to save the credentials. Check the deploy logs for the underlying error.",
 };
 
 interface PageProps {
