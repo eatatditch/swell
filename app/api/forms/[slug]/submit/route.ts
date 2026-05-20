@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import {
+  leadSourceFromForm,
   mapSubmissionToLead,
   validateSubmission,
 } from "@/lib/forms/schema";
-import type { FormSchema, FormSettings } from "@/lib/types/database";
+import type {
+  FormSchema,
+  FormSettings,
+  FormSourceChannel,
+} from "@/lib/types/database";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,7 +63,7 @@ export async function POST(
   const { data: form, error: formErr } = await admin
     .from("lead_forms")
     .select(
-      "id, location_id, slug, name, schema, settings, active, submission_count",
+      "id, location_id, slug, name, schema, settings, active, submission_count, source_channel, source_label",
     )
     .ilike("slug", slug)
     .maybeSingle();
@@ -142,6 +147,12 @@ export async function POST(
     .maybeSingle();
   const insertPosition = (topRow?.pipeline_position ?? 0) - 1;
 
+  const formSource = leadSourceFromForm({
+    source_channel: form.source_channel as FormSourceChannel,
+    source_label: form.source_label,
+    name: form.name,
+  });
+
   const { data: createdLead, error: leadErr } = await admin
     .from("catering_leads")
     .insert({
@@ -156,7 +167,10 @@ export async function POST(
       budget_high_cents: lead.budget_high_cents ?? null,
       estimated_value_cents: lead.estimated_value_cents ?? null,
       notes: lead.notes ?? null,
-      source: lead.source ?? `form:${form.slug}`,
+      // A field mapped to "source" on the form (e.g. utm_source) wins; otherwise
+      // use the form's own attribution label.
+      source: lead.source ?? formSource,
+      source_form_id: form.id,
     })
     .select("id")
     .single();

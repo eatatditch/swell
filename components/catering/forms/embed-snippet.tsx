@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Download } from "lucide-react";
 
 interface EmbedSnippetProps {
   slug: string;
@@ -78,6 +78,33 @@ export function EmbedSnippet({ slug, appUrl }: EmbedSnippetProps) {
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          Print QR code
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Scan-to-fill QR for table tents, posters, and in-store signage.
+          Right-click the image to save, or click <em>Download</em>.
+        </p>
+        <div className="mt-2 flex items-start gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/forms/${encodeURIComponent(slug)}/qr.png`}
+            alt={`QR code for ${slug}`}
+            className="h-32 w-32 rounded-md border border-border bg-white p-1"
+          />
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <a
+              href={`/api/forms/${encodeURIComponent(slug)}/qr.png`}
+              download={`swell-form-${slug}.png`}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download
+            </a>
           </Button>
         </div>
       </div>

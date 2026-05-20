@@ -10,11 +10,24 @@ import type { FormSchema, FormSettings } from "@/lib/types/database";
 
 const stringy = z.string().trim();
 
+const sourceChannelSchema = z.enum([
+  "instagram",
+  "website",
+  "qr_code",
+  "ad",
+  "email",
+  "referral",
+  "partner",
+  "other",
+]);
+
 const createSchema = z.object({
   name: stringy.min(1).max(200),
   locationId: z.string().uuid(),
   slug: stringy.max(64).optional().nullable(),
   description: stringy.max(2000).optional().nullable(),
+  sourceChannel: sourceChannelSchema.optional(),
+  sourceLabel: stringy.max(200).optional().nullable(),
 });
 
 export type CreateFormInput = z.input<typeof createSchema>;
@@ -45,6 +58,8 @@ export async function createLeadForm(raw: CreateFormInput) {
       description: v.description || null,
       schema: defaultSchema(),
       settings: defaultSettings(),
+      source_channel: v.sourceChannel ?? "website",
+      source_label: v.sourceLabel || null,
     })
     .select("*")
     .single();
@@ -73,6 +88,8 @@ const updateSchema = z.object({
   active: z.boolean().optional(),
   schema: z.unknown().optional(),
   settings: z.unknown().optional(),
+  sourceChannel: sourceChannelSchema.optional(),
+  sourceLabel: stringy.max(200).optional().nullable(),
 });
 
 export type UpdateFormInput = z.input<typeof updateSchema>;
@@ -96,6 +113,8 @@ export async function updateLeadForm(raw: UpdateFormInput) {
   if (v.active !== undefined) update.active = v.active;
   if (v.schema !== undefined) update.schema = v.schema as FormSchema;
   if (v.settings !== undefined) update.settings = v.settings as FormSettings;
+  if (v.sourceChannel !== undefined) update.source_channel = v.sourceChannel;
+  if (v.sourceLabel !== undefined) update.source_label = v.sourceLabel || null;
 
   if (v.slug !== undefined) {
     const baseSlug = slugify(v.slug);
