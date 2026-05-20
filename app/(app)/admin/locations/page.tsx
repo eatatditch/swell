@@ -7,12 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/data/empty-state";
+import { LocationRow } from "@/components/admin/locations/location-row";
+import { NewLocationDialog } from "@/components/admin/locations/new-location-dialog";
+import { requireAdmin } from "@/lib/auth/get-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Location } from "@/lib/types/database";
 
 export default async function AdminLocationsPage() {
+  await requireAdmin();
   const supabase = createSupabaseServerClient();
   const { data } = await supabase
     .from("locations")
@@ -22,34 +25,27 @@ export default async function AdminLocationsPage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Locations</CardTitle>
-        <CardDescription>
-          The four operating scopes. Editing locations arrives in Phase 12.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div>
+          <CardTitle>Locations</CardTitle>
+          <CardDescription>
+            Add new locations, rename them, change their order, or take them
+            offline.
+          </CardDescription>
+        </div>
+        <NewLocationDialog />
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
           <EmptyState
             icon={MapPin}
             title="No locations"
-            description="Locations are seeded in the initial migration."
+            description="Add your first location to get going."
           />
         ) : (
           <div className="divide-y rounded-md border">
             {rows.map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{l.name}</p>
-                  <p className="text-xs text-muted-foreground">{l.slug}</p>
-                </div>
-                <Badge variant={l.is_active ? "secondary" : "outline"}>
-                  {l.is_active ? "Active" : "Inactive"}
-                </Badge>
-              </div>
+              <LocationRow key={l.id} location={l} />
             ))}
           </div>
         )}

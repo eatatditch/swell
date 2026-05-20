@@ -1,5 +1,3 @@
-import { Tags } from "lucide-react";
-
 import {
   Card,
   CardContent,
@@ -7,10 +5,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/data/empty-state";
+import { CategoryManager } from "@/components/admin/categories/category-manager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/get-user";
+import { MODULES } from "@/lib/constants/modules";
 import type { Category } from "@/lib/types/database";
 
 export default async function AdminCategoriesPage() {
@@ -29,40 +27,22 @@ export default async function AdminCategoriesPage() {
     return acc;
   }, {});
 
+  const modules = MODULES.filter((m) => m.slug !== "admin").map((m) => ({
+    slug: m.slug,
+    label: m.label,
+  }));
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Categories</CardTitle>
         <CardDescription>
           Generic taxonomy. Modules tag rows with categories scoped to that
-          module. Editing arrives in Phase 12; seed via SQL for now.
+          module — pick what shows up in dropdowns.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {rows.length === 0 ? (
-          <EmptyState
-            icon={Tags}
-            title="No categories yet"
-            description="Modules will seed categories as they ship in their phases."
-          />
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(byModule).map(([module, cats]) => (
-              <div key={module}>
-                <h3 className="mb-2 text-sm font-semibold capitalize text-muted-foreground">
-                  {module}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {cats.map((c) => (
-                    <Badge key={c.id} variant="secondary">
-                      {c.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <CategoryManager modules={modules} byModule={byModule} />
       </CardContent>
     </Card>
   );

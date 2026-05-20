@@ -35,6 +35,20 @@ export interface Profile {
   role: Role;
   is_active: boolean;
   phone: string | null;
+  bio: string | null;
+  job_title: string | null;
+  start_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserNotificationPreferences {
+  user_id: string;
+  email_on_new_lead: boolean;
+  email_on_quote_paid: boolean;
+  email_on_comment: boolean;
+  email_on_assignment: boolean;
+  digest_daily: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +58,30 @@ export interface UserLocationAssignment {
   user_id: string;
   location_id: string;
   created_at: string;
+}
+
+export interface SystemSettings {
+  id: number;
+  company_name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+  default_email_from_name: string | null;
+  default_email_signature: string | null;
+  default_reply_to: string | null;
+  default_deposit_cents: number;
+  updated_at: string;
+}
+
+export interface LocationHours {
+  id: string;
+  location_id: string;
+  day_of_week: number;
+  open_time: string | null;
+  close_time: string | null;
+  is_closed: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ---------------------------------------------------------------------------
