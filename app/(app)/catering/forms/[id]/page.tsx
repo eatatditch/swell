@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { FormBuilder } from "@/components/catering/forms/form-builder";
 import { EmbedSnippet } from "@/components/catering/forms/embed-snippet";
 import { SubmissionsList } from "@/components/catering/forms/submissions-list";
+import { DeleteFormCard } from "@/components/catering/forms/delete-form-card";
 import { getLeadFormById, listFormSubmissions } from "@/lib/server/lead-forms";
 import { appUrl } from "@/lib/stripe/client";
 
@@ -46,6 +47,12 @@ export default async function CateringFormDetailPage({ params }: PageProps) {
           <h2 className="font-display text-xl font-bold">Recent submissions</h2>
           <SubmissionsList submissions={submissions} />
         </section>
+
+        <DeleteFormCard
+          formId={form.id}
+          formName={form.name}
+          submissionCount={form.submission_count}
+        />
       </div>
     </>
   );
