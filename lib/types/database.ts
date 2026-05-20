@@ -530,6 +530,7 @@ export interface EventPayment {
   updated_at: string;
   created_by: string | null;
   event_id: string;
+  invoice_id: string | null;
   recorded_by: string | null;
   kind: EventPaymentKind;
   status: EventPaymentStatus;
@@ -539,6 +540,120 @@ export interface EventPayment {
   paid_at: string | null;
   reference: string | null;
   notes: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase C — catering quotes, invoices, billing
+// ---------------------------------------------------------------------------
+
+export type CateringQuoteStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "converted";
+
+export interface CateringQuote {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  contact_id: string;
+  lead_id: string | null;
+  event_id: string | null;
+  location_id: string | null;
+  quote_number: string;
+  status: CateringQuoteStatus;
+  title: string;
+  event_date: string | null;
+  guest_count: number | null;
+  service_type: CateringServiceType | null;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  subtotal_cents: number;
+  discount_cents: number;
+  tax_rate_bps: number;
+  tax_cents: number;
+  gratuity_rate_bps: number;
+  gratuity_cents: number;
+  total_cents: number;
+  deposit_required_cents: number;
+  valid_until: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  decline_reason: string | null;
+  converted_invoice_id: string | null;
+}
+
+export interface CateringQuoteLineItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  quote_id: string;
+  menu_item_id: string | null;
+  position: number;
+  name: string;
+  description: string | null;
+  unit: string;
+  quantity: number;
+  unit_price_cents: number;
+  total_cents: number;
+}
+
+export type CateringInvoiceStatus =
+  | "draft"
+  | "sent"
+  | "partially_paid"
+  | "paid"
+  | "overdue"
+  | "void";
+
+export interface CateringInvoice {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  contact_id: string;
+  quote_id: string | null;
+  event_id: string | null;
+  location_id: string | null;
+  invoice_number: string;
+  status: CateringInvoiceStatus;
+  title: string;
+  issue_date: string;
+  due_date: string | null;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  subtotal_cents: number;
+  discount_cents: number;
+  tax_rate_bps: number;
+  tax_cents: number;
+  gratuity_rate_bps: number;
+  gratuity_cents: number;
+  total_cents: number;
+  amount_paid_cents: number;
+  balance_cents: number;
+  sent_at: string | null;
+  paid_at: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+}
+
+export interface CateringInvoiceLineItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  invoice_id: string;
+  menu_item_id: string | null;
+  position: number;
+  name: string;
+  description: string | null;
+  unit: string;
+  quantity: number;
+  unit_price_cents: number;
+  total_cents: number;
 }
 
 export type EventUgcContentType =
