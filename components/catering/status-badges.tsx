@@ -2,16 +2,22 @@ import { cn } from "@/lib/utils";
 import {
   EVENT_STATUS_COLORS,
   EVENT_STATUS_LABELS,
+  INVOICE_STATUS_COLORS,
+  INVOICE_STATUS_LABELS,
   LEAD_STATUS_COLORS,
   LEAD_STATUS_LABELS,
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
+  QUOTE_STATUS_COLORS,
+  QUOTE_STATUS_LABELS,
   UGC_STATUS_COLORS,
   UGC_STATUS_LABELS,
 } from "@/lib/constants/catering";
 import type {
   CateringEventStatus,
+  CateringInvoiceStatus,
   CateringLeadStatus,
+  CateringQuoteStatus,
   EventPaymentStatus,
   EventUgcStatus,
 } from "@/lib/types/database";
@@ -71,6 +77,34 @@ export function UgcStatusBadge({
   return (
     <span className={cn(PILL, UGC_STATUS_COLORS[status], className)}>
       {UGC_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function QuoteStatusBadge({
+  status,
+  className,
+}: {
+  status: CateringQuoteStatus;
+  className?: string;
+}) {
+  return (
+    <span className={cn(PILL, QUOTE_STATUS_COLORS[status], className)}>
+      {QUOTE_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function InvoiceStatusBadge({
+  status,
+  className,
+}: {
+  status: CateringInvoiceStatus;
+  className?: string;
+}) {
+  return (
+    <span className={cn(PILL, INVOICE_STATUS_COLORS[status], className)}>
+      {INVOICE_STATUS_LABELS[status]}
     </span>
   );
 }

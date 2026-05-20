@@ -1,7 +1,9 @@
 import type {
   CateringEventStatus,
   CateringFollowupKind,
+  CateringInvoiceStatus,
   CateringLeadStatus,
+  CateringQuoteStatus,
   CateringServiceType,
   EventMenuCategory,
   EventPaymentKind,
@@ -293,4 +295,109 @@ export function formatTime(hms: string | null): string {
   const period = hour >= 12 ? "PM" : "AM";
   const display = ((hour + 11) % 12) + 1;
   return `${display}:${minute.toString().padStart(2, "0")} ${period}`;
+}
+
+// =============================================================================
+// Quotes
+// =============================================================================
+export const QUOTE_STATUSES: CateringQuoteStatus[] = [
+  "draft",
+  "sent",
+  "accepted",
+  "declined",
+  "expired",
+  "converted",
+];
+
+export const QUOTE_STATUS_LABELS: Record<CateringQuoteStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  accepted: "Accepted",
+  declined: "Declined",
+  expired: "Expired",
+  converted: "Converted",
+};
+
+export const QUOTE_STATUS_COLORS: Record<CateringQuoteStatus, string> = {
+  draft: "bg-muted text-foreground",
+  sent: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100",
+  accepted: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100",
+  declined: "bg-rose-100 text-rose-900 dark:bg-rose-900/30 dark:text-rose-100",
+  expired: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100",
+  converted: "bg-primary/15 text-primary",
+};
+
+// =============================================================================
+// Invoices
+// =============================================================================
+export const INVOICE_STATUSES: CateringInvoiceStatus[] = [
+  "draft",
+  "sent",
+  "partially_paid",
+  "paid",
+  "overdue",
+  "void",
+];
+
+export const INVOICE_STATUS_LABELS: Record<CateringInvoiceStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  partially_paid: "Partially paid",
+  paid: "Paid",
+  overdue: "Overdue",
+  void: "Void",
+};
+
+export const INVOICE_STATUS_COLORS: Record<CateringInvoiceStatus, string> = {
+  draft: "bg-muted text-foreground",
+  sent: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100",
+  partially_paid: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100",
+  paid: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100",
+  overdue: "bg-rose-100 text-rose-900 dark:bg-rose-900/30 dark:text-rose-100",
+  void: "bg-muted text-muted-foreground",
+};
+
+// =============================================================================
+// Money math helpers
+// =============================================================================
+export function basisPointsToPercent(bps: number): number {
+  return bps / 100;
+}
+
+export function percentToBasisPoints(percent: number): number {
+  return Math.round(percent * 100);
+}
+
+export interface LineLike {
+  total_cents: number;
+}
+
+export interface TotalsInput {
+  lines: LineLike[];
+  discount_cents: number;
+  tax_rate_bps: number;
+  gratuity_rate_bps: number;
+}
+
+export interface ComputedTotals {
+  subtotal_cents: number;
+  tax_cents: number;
+  gratuity_cents: number;
+  total_cents: number;
+}
+
+// Order of operations: subtotal → minus discount → tax on discounted; gratuity
+// on raw subtotal (standard catering practice).
+export function computeTotals(input: TotalsInput): ComputedTotals {
+  const subtotal = input.lines.reduce((s, l) => s + (l.total_cents ?? 0), 0);
+  const afterDiscount = Math.max(0, subtotal - input.discount_cents);
+  const tax = Math.round((afterDiscount * input.tax_rate_bps) / 10000);
+  const gratuity = Math.round((subtotal * input.gratuity_rate_bps) / 10000);
+  const total = Math.max(0, afterDiscount + tax + gratuity);
+  return {
+    subtotal_cents: subtotal,
+    tax_cents: tax,
+    gratuity_cents: gratuity,
+    total_cents: total,
+  };
 }
