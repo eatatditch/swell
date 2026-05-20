@@ -38,6 +38,7 @@ import {
   AlignLeft,
   Trash2,
   Columns,
+  Columns3,
   Square,
 } from "lucide-react";
 
@@ -155,16 +156,19 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
     const newField = createField(palette.type);
     mutateSchema((s) => ({
       ...s,
-      rows: s.rows.map((r) =>
-        r.id === rowId
-          ? {
-              ...r,
-              fields: [...r.fields, newField].slice(0, r.columns),
-              // Auto-expand to 2 columns if a 1-col row gets a second field.
-              columns: r.fields.length === 1 && r.columns === 1 ? 2 : r.columns,
-            }
-          : r,
-      ),
+      rows: s.rows.map((r) => {
+        if (r.id !== rowId) return r;
+        // Auto-expand a 1-col row to 2 cols when a second field lands in it.
+        // Past that, respect the operator's manual choice — they need to bump
+        // to 3 columns from the toolbar.
+        const nextColumns: 1 | 2 | 3 =
+          r.fields.length === 1 && r.columns === 1 ? 2 : r.columns;
+        return {
+          ...r,
+          fields: [...r.fields, newField].slice(0, nextColumns),
+          columns: nextColumns,
+        };
+      }),
     }));
     setSelectedFieldId(newField.id);
   }
@@ -191,7 +195,7 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
     }));
   }
 
-  function setRowColumns(rowId: string, columns: 1 | 2) {
+  function setRowColumns(rowId: string, columns: 1 | 2 | 3) {
     mutateSchema((s) => ({
       ...s,
       rows: s.rows.map((r) =>
@@ -246,9 +250,9 @@ export function FormBuilder({ form, appUrl }: FormBuilderProps) {
       } else if (overId.startsWith("row:")) {
         const rowId = overId.slice("row:".length);
         const row = schema.rows.find((r) => r.id === rowId);
-        if (row && row.fields.length < 2) {
+        if (row && row.fields.length < row.columns) {
           addFieldToRow(rowId, palette);
-        } else {
+        } else if (row) {
           const index = schema.rows.findIndex((r) => r.id === rowId);
           addRowFromPalette(palette, index + 1);
         }
@@ -521,7 +525,7 @@ interface CanvasProps {
   selectedFieldId: string | null;
   onSelectField: (id: string | null) => void;
   onDeleteField: (id: string) => void;
-  onSetRowColumns: (rowId: string, columns: 1 | 2) => void;
+  onSetRowColumns: (rowId: string, columns: 1 | 2 | 3) => void;
   onDeleteRow: (rowId: string) => void;
 }
 
@@ -599,6 +603,17 @@ function RowCard({
           </button>
           <button
             type="button"
+            title="3 columns"
+            className={cn(
+              "rounded p-1 text-muted-foreground hover:bg-muted",
+              row.columns === 3 && "bg-muted text-foreground",
+            )}
+            onClick={() => onSetRowColumns(row.id, 3)}
+          >
+            <Columns3 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
             title="Delete row"
             className="rounded p-1 text-muted-foreground hover:bg-rose-50 hover:text-rose-600"
             onClick={() => onDeleteRow(row.id)}
@@ -611,7 +626,11 @@ function RowCard({
         <div
           className={cn(
             "grid gap-2",
-            row.columns === 2 ? "sm:grid-cols-2" : "grid-cols-1",
+            row.columns === 3
+              ? "sm:grid-cols-3"
+              : row.columns === 2
+                ? "sm:grid-cols-2"
+                : "grid-cols-1",
           )}
         >
           {row.fields.map((field) => (
@@ -623,11 +642,16 @@ function RowCard({
               onDelete={() => onDeleteField(field.id)}
             />
           ))}
-          {row.columns === 2 && row.fields.length < 2 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-              Drop a field here
-            </div>
-          ) : null}
+          {Array.from({ length: row.columns - row.fields.length }).map(
+            (_, i) => (
+              <div
+                key={`empty-${i}`}
+                className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-center text-xs text-muted-foreground"
+              >
+                Drop a field here
+              </div>
+            ),
+          )}
         </div>
       </DropZone>
     </div>
