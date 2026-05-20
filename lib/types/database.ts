@@ -959,6 +959,204 @@ export interface FounderCashSnapshot {
   notes: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 4 — training (Surf School)
+// ---------------------------------------------------------------------------
+
+export interface TrainingCategory {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  slug: string;
+  name: string;
+  description: string | null;
+  department: string | null;
+  icon: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface TrainingCourse {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  category_id: string | null;
+  slug: string;
+  title: string;
+  description: string | null;
+  estimated_minutes: number | null;
+  is_required: boolean;
+  requires_signoff: boolean;
+  sort_order: number;
+  is_active: boolean;
+  tags: string[];
+  target_roles: Role[];
+}
+
+export interface TrainingLesson {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  course_id: string;
+  slug: string;
+  title: string;
+  position: number;
+  content: string | null;
+  video_url: string | null;
+  estimated_minutes: number | null;
+  is_active: boolean;
+}
+
+export type TrainingResourceKind =
+  | "video"
+  | "pdf"
+  | "image"
+  | "link"
+  | "download";
+
+export interface TrainingLessonResource {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  lesson_id: string;
+  kind: TrainingResourceKind;
+  url: string;
+  label: string | null;
+  position: number;
+  is_printable: boolean;
+}
+
+export interface TrainingQuiz {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  course_id: string | null;
+  lesson_id: string | null;
+  title: string;
+  description: string | null;
+  passing_score: number;
+  retry_limit: number;
+  is_active: boolean;
+}
+
+export type TrainingQuestionKind =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer";
+
+export interface TrainingQuizQuestion {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  quiz_id: string;
+  position: number;
+  kind: TrainingQuestionKind;
+  prompt: string;
+  explanation: string | null;
+  correct_text: string | null;
+}
+
+export interface TrainingQuizOption {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  question_id: string;
+  label: string;
+  is_correct: boolean;
+  position: number;
+}
+
+export interface TrainingQuizAttempt {
+  id: string;
+  created_at: string;
+  quiz_id: string;
+  user_id: string;
+  score: number;
+  passed: boolean;
+  answers: Record<string, string>;
+  started_at: string;
+  completed_at: string;
+}
+
+export interface TrainingPath {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  name: string;
+  description: string | null;
+  target_roles: Role[];
+  target_department: string | null;
+  course_interval_days: number;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface TrainingPathCourse {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  path_id: string;
+  course_id: string;
+  position: number;
+  is_required: boolean;
+}
+
+export type UserTrainingPathReason = "role" | "manual";
+
+export interface UserTrainingPath {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  path_id: string;
+  assigned_by: string | null;
+  assigned_reason: UserTrainingPathReason;
+  due_date: string | null;
+  completed_at: string | null;
+}
+
+export interface TrainingProgress {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  lesson_id: string;
+  completed_at: string;
+  time_spent_seconds: number | null;
+}
+
+export interface TrainingSignoff {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  course_id: string;
+  signed_by: string;
+  signed_at: string;
+  notes: string | null;
+}
+
+export interface Certification {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  user_id: string;
+  kind: string;
+  name: string;
+  issuing_body: string | null;
+  issued_on: string;
+  expires_on: string | null;
+  document_url: string | null;
+  notes: string | null;
+}
+
 export type EmailDirection = "inbound" | "outbound";
 
 export interface EmailMessage {
