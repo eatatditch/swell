@@ -17,12 +17,17 @@ import { LeadStatusBadge } from "@/components/catering/status-badges";
 import { LeadStageControls } from "@/components/catering/leads/lead-stage-controls";
 import { ConvertToEventDialog } from "@/components/catering/leads/convert-to-event-dialog";
 import { FollowupList } from "@/components/catering/followups/followup-list";
+import { LeadEmailThread } from "@/components/catering/leads/lead-email-thread";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   getLead,
   listFollowups,
 } from "@/lib/server/catering";
+import {
+  getCurrentUserGmailAccount,
+  listEmailsForLead,
+} from "@/lib/server/gmail";
 import {
   formatCents,
   formatEventDate,
@@ -37,7 +42,11 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const lead = await getLead(params.id);
   if (!lead) notFound();
 
-  const followups = await listFollowups(lead.id);
+  const [followups, gmailAccount, emails] = await Promise.all([
+    listFollowups(lead.id),
+    getCurrentUserGmailAccount(),
+    listEmailsForLead(lead.id),
+  ]);
   const canDelete =
     lead.created_by === profile.id || profile.role === "founder_admin";
 
@@ -223,9 +232,28 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Communications</CardTitle>
+              <CardTitle className="text-base">Email thread</CardTitle>
               <CardDescription>
-                Calls, emails, and notes. Tagged on this lead.
+                Inbound and outbound mail with this contact, pulled from your
+                connected Gmail.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LeadEmailThread
+                contactEmail={contact.email}
+                contactName={contact.full_name}
+                leadName={lead.event_type ?? contact.full_name}
+                emails={emails}
+                gmailConnected={gmailAccount?.status === "active"}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Internal notes</CardTitle>
+              <CardDescription>
+                Team-only comments. Not visible to the guest.
               </CardDescription>
             </CardHeader>
             <CardContent>

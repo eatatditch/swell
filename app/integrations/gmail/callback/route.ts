@@ -59,25 +59,46 @@ export async function GET(request: Request) {
   let tokens;
   try {
     tokens = await exchangeCodeForTokens(code);
-  } catch {
+  } catch (err) {
+    console.error("[gmail-callback] token exchange failed:", err);
     return back(request, "token_exchange_failed");
   }
 
   if (!tokens.refresh_token) {
     // Google only ships a refresh token on first consent. Without it we
     // can't sync long-term, so make the user re-consent.
+    console.warn("[gmail-callback] no refresh_token in response. scope:", tokens.scope);
     return back(request, "no_refresh_token");
   }
 
   let info;
   try {
     info = await fetchUserInfo(tokens.access_token);
-  } catch {
+  } catch (err) {
+    console.error("[gmail-callback] userinfo failed:", err);
     return back(request, "userinfo_failed");
   }
 
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
   const scopes = tokens.scope ? tokens.scope.split(/\s+/) : [];
+
+  let payload;
+  try {
+    payload = {
+      user_id: user.id,
+      google_user_id: info.sub,
+      email: info.email,
+      access_token_enc: encryptToken(tokens.access_token),
+      refresh_token_enc: encryptToken(tokens.refresh_token),
+      token_expires_at: expiresAt,
+      scopes,
+      status: "active" as const,
+      last_error: null,
+    };
+  } catch (err) {
+    console.error("[gmail-callback] token encryption failed:", err);
+    return back(request, "encryption_failed");
+  }
 
   // Upsert by (user_id, lower(email)). If the same user reconnects the same
   // gmail, update the tokens; otherwise insert a new row.
@@ -88,22 +109,23 @@ export async function GET(request: Request) {
     .ilike("email", info.email)
     .maybeSingle();
 
-  const payload = {
-    user_id: user.id,
-    google_user_id: info.sub,
-    email: info.email,
-    access_token_enc: encryptToken(tokens.access_token),
-    refresh_token_enc: encryptToken(tokens.refresh_token),
-    token_expires_at: expiresAt,
-    scopes,
-    status: "active" as const,
-    last_error: null,
-  };
-
   if (existing) {
-    await admin.from("gmail_accounts").update(payload).eq("id", existing.id);
+    const { error: updateErr } = await admin
+      .from("gmail_accounts")
+      .update(payload)
+      .eq("id", existing.id);
+    if (updateErr) {
+      console.error("[gmail-callback] update failed:", updateErr);
+      return back(request, "db_write_failed");
+    }
   } else {
-    await admin.from("gmail_accounts").insert(payload);
+    const { error: insertErr } = await admin
+      .from("gmail_accounts")
+      .insert(payload);
+    if (insertErr) {
+      console.error("[gmail-callback] insert failed:", insertErr);
+      return back(request, "db_write_failed");
+    }
   }
 
   const redirect = new URL("/catering/integrations", request.url);
