@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LeadStatusBadge, EventStatusBadge } from "@/components/catering/status-badges";
+import { ConversationThread } from "@/components/catering/emails/conversation-thread";
 import { ActivityFeed } from "@/components/activity/activity-feed";
 import { requireUser } from "@/lib/auth/get-user";
 import {
@@ -19,6 +20,10 @@ import {
   listEventsForContact,
   listLeadsForContact,
 } from "@/lib/server/catering";
+import {
+  getCurrentUserGmailAccount,
+  listEmailsForContact,
+} from "@/lib/server/gmail";
 import {
   formatCents,
   formatEventDate,
@@ -33,9 +38,11 @@ export default async function ContactDetailPage({ params }: PageProps) {
   const contact = await getContact(params.id);
   if (!contact) notFound();
 
-  const [leads, events] = await Promise.all([
+  const [leads, events, emails, gmailAccount] = await Promise.all([
     listLeadsForContact(contact.id),
     listEventsForContact(contact.id),
+    listEmailsForContact(contact.id),
+    getCurrentUserGmailAccount(),
   ]);
 
   const cityLine = [contact.city, contact.state, contact.postal_code]
@@ -127,6 +134,25 @@ export default async function ContactDetailPage({ params }: PageProps) {
                   </div>
                 </>
               ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Email thread</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConversationThread
+                contactId={contact.id}
+                leadId={leads[0]?.id ?? null}
+                contactEmail={contact.email}
+                contactName={contact.full_name}
+                subjectSeed={`Following up — ${contact.full_name}`}
+                emails={emails}
+                gmailConnected={gmailAccount?.status === "active"}
+                gmailEmail={gmailAccount?.email ?? null}
+                emptyHint={`Every email between ${contact.full_name} and your team will appear here, across all leads and events.`}
+              />
             </CardContent>
           </Card>
 

@@ -13,7 +13,10 @@ import type { GmailAccount } from "@/lib/types/database";
 const stringy = z.string().trim();
 
 const sendSchema = z.object({
-  leadId: z.string().uuid(),
+  // At least one of contactId / leadId is required so the outbound mirror
+  // can be filed under the right pipeline object.
+  contactId: z.string().uuid().optional().nullable(),
+  leadId: z.string().uuid().optional().nullable(),
   to: z.string().email(),
   subject: stringy.min(1).max(500),
   body: stringy.min(1).max(50_000),
@@ -54,13 +57,24 @@ export async function sendLeadEmail(raw: SendLeadEmailInput) {
     };
   }
 
-  // Resolve the contact for this lead so we can stash contact_id alongside
-  // the message — keeps the unified-by-contact view honest.
-  const { data: lead } = await admin
-    .from("catering_leads")
-    .select("id, contact_id, location_id")
-    .eq("id", v.leadId)
-    .maybeSingle();
+  // Resolve a contact_id if only leadId was provided (and vice versa), and
+  // a location_id for activity logging.
+  let contactId: string | null = v.contactId ?? null;
+  let locationId: string | null = null;
+  if (v.leadId) {
+    const { data: lead } = await admin
+      .from("catering_leads")
+      .select("contact_id, location_id")
+      .eq("id", v.leadId)
+      .maybeSingle();
+    if (lead) {
+      if (!contactId) contactId = lead.contact_id;
+      locationId = lead.location_id;
+    }
+  }
+  if (!contactId && !v.leadId) {
+    return { error: "Provide a contact or a lead to attach this email to" };
+  }
 
   let sent;
   try {
@@ -88,18 +102,28 @@ export async function sendLeadEmail(raw: SendLeadEmailInput) {
     subject: v.subject,
     bodyText: v.body,
     bodyHtml: null,
-    leadId: v.leadId,
-    contactId: lead?.contact_id ?? null,
+    leadId: v.leadId ?? null,
+    contactId,
   });
 
-  await logActivity({
-    verb: "emailed",
-    objectType: "catering_lead",
-    objectId: v.leadId,
-    summary: v.subject,
-    locationId: lead?.location_id ?? null,
-  });
+  if (v.leadId) {
+    await logActivity({
+      verb: "emailed",
+      objectType: "catering_lead",
+      objectId: v.leadId,
+      summary: v.subject,
+      locationId,
+    });
+    revalidatePath(`/catering/leads/${v.leadId}`);
+  } else if (contactId) {
+    await logActivity({
+      verb: "emailed",
+      objectType: "catering_contact",
+      objectId: contactId,
+      summary: v.subject,
+    });
+    revalidatePath(`/catering/contacts/${contactId}`);
+  }
 
-  revalidatePath(`/catering/leads/${v.leadId}`);
   return { ok: true, messageId: sent.id, threadId: sent.threadId };
 }

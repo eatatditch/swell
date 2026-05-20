@@ -13,12 +13,12 @@ import type {
 } from "@/lib/types/database";
 
 export type QuoteWithContact = CateringQuote & {
-  contact: Pick<CateringContact, "id" | "full_name" | "company"> | null;
+  contact: Pick<CateringContact, "id" | "full_name" | "company" | "email" | "phone"> | null;
   location: Pick<Location, "id" | "name" | "slug"> | null;
 };
 
 export type InvoiceWithContact = CateringInvoice & {
-  contact: Pick<CateringContact, "id" | "full_name" | "company"> | null;
+  contact: Pick<CateringContact, "id" | "full_name" | "company" | "email" | "phone"> | null;
   location: Pick<Location, "id" | "name" | "slug"> | null;
 };
 
@@ -31,10 +31,10 @@ export type FullInvoice = InvoiceWithContact & {
 };
 
 const QUOTE_SELECT =
-  "*, contact:catering_contacts!catering_quotes_contact_id_fkey(id, full_name, company), location:locations(id, name, slug)";
+  "*, contact:catering_contacts!catering_quotes_contact_id_fkey(id, full_name, company, email, phone), location:locations(id, name, slug)";
 
 const INVOICE_SELECT =
-  "*, contact:catering_contacts!catering_invoices_contact_id_fkey(id, full_name, company), location:locations(id, name, slug)";
+  "*, contact:catering_contacts!catering_invoices_contact_id_fkey(id, full_name, company, email, phone), location:locations(id, name, slug)";
 
 export async function listQuotes(opts: {
   locationId?: string | null;

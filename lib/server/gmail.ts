@@ -58,3 +58,29 @@ export async function listEmailsForContact(
     .limit(limit);
   return (data ?? []) as EmailMessage[];
 }
+
+// Emails relevant to a quote: anything tied to the quote's lead OR contact
+// (covers conversations that started before the quote was drafted).
+export async function listEmailsForQuote(
+  quoteId: string,
+  limit = 50,
+): Promise<EmailMessage[]> {
+  const supabase = createSupabaseServerClient();
+  const { data: quote } = await supabase
+    .from("catering_quotes")
+    .select("contact_id, lead_id")
+    .eq("id", quoteId)
+    .maybeSingle();
+  if (!quote) return [];
+  const filters: string[] = [];
+  if (quote.contact_id) filters.push(`contact_id.eq.${quote.contact_id}`);
+  if (quote.lead_id) filters.push(`lead_id.eq.${quote.lead_id}`);
+  if (filters.length === 0) return [];
+  const { data } = await supabase
+    .from("email_messages")
+    .select("*")
+    .or(filters.join(","))
+    .order("sent_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  return (data ?? []) as EmailMessage[];
+}
