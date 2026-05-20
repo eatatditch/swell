@@ -19,7 +19,7 @@ export async function Topbar({
   const { items, unread } = await getRecentNotifications(profile.id);
 
   return (
-    <header className="flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur md:px-6">
+    <header className="flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-6">
       <MobileNav role={profile.role} />
       <div className="ml-auto flex items-center gap-2">
         <LocationSwitcher

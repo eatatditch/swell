@@ -16,12 +16,20 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "mb-6 flex flex-col gap-3 border-b pb-6 sm:flex-row sm:items-end sm:justify-between",
+        "mb-6 flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between",
         className,
       )}
     >
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <div className="space-y-2">
+        <div>
+          <h1 className="font-display text-3xl font-black leading-tight tracking-tight text-foreground sm:text-4xl">
+            {title}
+          </h1>
+          <span
+            aria-hidden="true"
+            className="mt-2 block h-[3px] w-12 rounded-full bg-accent"
+          />
+        </div>
         {description ? (
           <p className="text-sm text-muted-foreground">{description}</p>
         ) : null}

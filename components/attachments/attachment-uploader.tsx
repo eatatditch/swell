@@ -90,7 +90,7 @@ export function AttachmentUploader({
     <div className={cn("space-y-2", className)}>
       <label
         className={cn(
-          "flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed bg-card px-4 py-6 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+          "flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card px-4 py-6 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
           pending && "pointer-events-none opacity-60",
         )}
       >

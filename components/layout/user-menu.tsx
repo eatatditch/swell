@@ -34,7 +34,7 @@ export function UserMenu({ profile }: UserMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-9 gap-2 rounded-full px-1.5"
+          className="relative h-9 gap-2 rounded-full p-0"
         >
           <Avatar className="h-8 w-8">
             {profile.avatar_url ? (

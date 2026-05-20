@@ -96,7 +96,7 @@ export function ShiftHandoffPanel({
             <Label htmlFor="hn-from">From</Label>
             <select
               id="hn-from"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               value={fromShift}
               onChange={(e) => setFromShift(e.target.value as HandoffShift)}
               disabled={pending}
@@ -112,7 +112,7 @@ export function ShiftHandoffPanel({
             <Label htmlFor="hn-to">To</Label>
             <select
               id="hn-to"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               value={toShift}
               onChange={(e) => setToShift(e.target.value as HandoffShift)}
               disabled={pending}
@@ -138,7 +138,11 @@ export function ShiftHandoffPanel({
           </Alert>
         ) : null}
         <div className="flex justify-end">
-          <Button onClick={submit} disabled={pending || !body.trim()}>
+          <Button
+            variant="accent"
+            onClick={submit}
+            disabled={pending || !body.trim()}
+          >
             {pending ? "Saving…" : "Post handoff"}
           </Button>
         </div>

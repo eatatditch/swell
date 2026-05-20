@@ -3,10 +3,10 @@ import { PRIORITY_LABELS } from "@/lib/constants/tasks";
 import type { Priority } from "@/lib/types/database";
 
 const PRIORITY_STYLES: Record<Priority, string> = {
-  low: "border-muted-foreground/30 text-muted-foreground",
-  normal: "border-sky-300 text-sky-800 dark:text-sky-200",
-  high: "border-amber-400 text-amber-800 dark:text-amber-200",
-  urgent: "border-rose-500 text-rose-800 dark:text-rose-200",
+  low: "border-border text-muted-foreground",
+  normal: "border-primary/40 text-primary",
+  high: "border-accent/60 text-accent",
+  urgent: "border-rose-500 text-rose-700 dark:text-rose-300",
 };
 
 export function PriorityBadge({
@@ -19,7 +19,7 @@ export function PriorityBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold",
         PRIORITY_STYLES[priority],
         className,
       )}

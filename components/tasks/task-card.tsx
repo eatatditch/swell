@@ -42,7 +42,7 @@ export function TaskCard({ task, assignee, className }: TaskCardProps) {
         variant="outline"
         className={cn(
           "h-7 w-7 shrink-0 rounded-full",
-          done && "bg-emerald-500 text-white hover:bg-emerald-500/90",
+          done && "border-primary bg-primary text-primary-foreground hover:bg-primary-deep",
         )}
         onClick={toggleDone}
         disabled={pending}

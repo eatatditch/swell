@@ -63,7 +63,7 @@ export function NewIssueDialog({ locationId }: NewIssueDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5">
+        <Button variant="accent" size="sm" className="gap-1.5">
           <Plus className="h-4 w-4" />
           New issue
         </Button>
@@ -100,7 +100,7 @@ export function NewIssueDialog({ locationId }: NewIssueDialogProps) {
             <Label htmlFor="ni-prio">Priority</Label>
             <select
               id="ni-prio"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               value={priority}
               onChange={(e) => setPriority(e.target.value as Priority)}
             >
@@ -126,7 +126,11 @@ export function NewIssueDialog({ locationId }: NewIssueDialogProps) {
           >
             Cancel
           </Button>
-          <Button onClick={submit} disabled={pending || !title.trim()}>
+          <Button
+            variant="accent"
+            onClick={submit}
+            disabled={pending || !title.trim()}
+          >
             {pending ? "Saving…" : "Create issue"}
           </Button>
         </DialogFooter>

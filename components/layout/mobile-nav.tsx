@@ -28,10 +28,13 @@ export function MobileNav({ role }: { role: Role }) {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 p-0">
-        <SheetHeader className="flex h-16 flex-row items-center gap-2 border-b px-5">
-          <Waves className="h-5 w-5 text-primary" />
-          <SheetTitle className="text-lg font-semibold tracking-tight">
+      <SheetContent
+        side="left"
+        className="w-64 bg-primary p-0 text-primary-foreground"
+      >
+        <SheetHeader className="flex h-16 flex-row items-center gap-2 border-b border-primary-foreground/10 px-5">
+          <Waves className="h-5 w-5 text-accent" />
+          <SheetTitle className="font-display text-xl font-black tracking-tight text-primary-foreground">
             SWELL
           </SheetTitle>
         </SheetHeader>

@@ -1,4 +1,4 @@
-import { Waves, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Waves } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,11 +20,21 @@ export default function LoginPage({ searchParams }: PageProps) {
     : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Waves className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">SWELL</h1>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Waves className="h-6 w-6 text-accent" />
+          </div>
+          <div>
+            <h1 className="font-display text-4xl font-black leading-none tracking-tight text-foreground">
+              SWELL
+            </h1>
+            <span
+              aria-hidden="true"
+              className="mx-auto mt-2 block h-[3px] w-12 rounded-full bg-accent"
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             Ditch&apos;s internal operating system.
           </p>
@@ -51,7 +61,7 @@ export default function LoginPage({ searchParams }: PageProps) {
           </Alert>
         ) : null}
 
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           {errorLabel ? (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{errorLabel}</AlertDescription>
