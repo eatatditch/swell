@@ -3,7 +3,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { isSupabaseConfigured } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/callback",
+  // Public catering inquiry forms + their submission endpoint, plus the
+  // embed loader served from /embed.js. These have to be reachable without
+  // a Supabase session for the marketing site to embed them.
+  "/f",
+  "/api/forms",
+  "/embed.js",
+  // Stripe webhook receives unauth POSTs signed with the webhook secret.
+  "/api/webhooks",
+];
 
 function isPublic(pathname: string): boolean {
   return (
