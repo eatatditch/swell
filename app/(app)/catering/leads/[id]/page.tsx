@@ -16,6 +16,7 @@ import { CommentThread } from "@/components/comments/comment-thread";
 import { LeadStatusBadge } from "@/components/catering/status-badges";
 import { LeadStageControls } from "@/components/catering/leads/lead-stage-controls";
 import { ConvertToEventDialog } from "@/components/catering/leads/convert-to-event-dialog";
+import { ConvertToQuoteButton } from "@/components/catering/leads/convert-to-quote-button";
 import { FollowupList } from "@/components/catering/followups/followup-list";
 import { LeadEmailThread } from "@/components/catering/leads/lead-email-thread";
 import { ActivityFeed } from "@/components/activity/activity-feed";
@@ -73,6 +74,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
             <Button asChild variant="outline" size="sm">
               <Link href={`/catering/leads/${lead.id}/edit`}>Edit</Link>
             </Button>
+            {lead.status !== "lost" && !lead.converted_event_id ? (
+              <ConvertToQuoteButton leadId={lead.id} />
+            ) : null}
             {canConvert && !lead.converted_event_id ? (
               <ConvertToEventDialog lead={lead} locations={locations} />
             ) : null}
