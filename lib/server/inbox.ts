@@ -93,6 +93,46 @@ export async function listMessagesInThread(
   return (data ?? []) as EmailMessage[];
 }
 
+// Auto-mark inbound emails read when the user is actively viewing them on
+// a lead / contact / quote page. Without this, the badge stays stuck at
+// "1 unread" because /catering/mail/[threadId] is the only path that
+// flips read_at, and most operators read their mail from the lead page
+// directly. Cheap — partial index makes the update sub-millisecond when
+// there's nothing to mark.
+export async function markEmailsReadInScope(scope: {
+  leadId?: string | null;
+  contactId?: string | null;
+}): Promise<void> {
+  if (!scope.leadId && !scope.contactId) return;
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: accounts } = await supabase
+    .from("gmail_accounts")
+    .select("id")
+    .eq("user_id", user.id);
+  if (!accounts || accounts.length === 0) return;
+  const ids = accounts.map((a) => a.id);
+
+  let q = supabase
+    .from("email_messages")
+    .update({ read_at: new Date().toISOString() })
+    .in("account_id", ids)
+    .eq("direction", "inbound")
+    .is("read_at", null);
+  if (scope.leadId && scope.contactId) {
+    q = q.or(`lead_id.eq.${scope.leadId},contact_id.eq.${scope.contactId}`);
+  } else if (scope.leadId) {
+    q = q.eq("lead_id", scope.leadId);
+  } else if (scope.contactId) {
+    q = q.eq("contact_id", scope.contactId);
+  }
+  await q;
+}
+
 export async function countUnreadForCurrentUser(): Promise<number> {
   const supabase = createSupabaseServerClient();
   const {

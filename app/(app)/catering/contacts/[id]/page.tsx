@@ -24,6 +24,7 @@ import {
   getCurrentUserGmailAccount,
   listEmailsForContact,
 } from "@/lib/server/gmail";
+import { markEmailsReadInScope } from "@/lib/server/inbox";
 import {
   formatCents,
   formatEventDate,
@@ -44,6 +45,7 @@ export default async function ContactDetailPage({ params }: PageProps) {
     listEmailsForContact(contact.id),
     getCurrentUserGmailAccount(),
   ]);
+  await markEmailsReadInScope({ contactId: contact.id });
 
   const cityLine = [contact.city, contact.state, contact.postal_code]
     .filter(Boolean)
