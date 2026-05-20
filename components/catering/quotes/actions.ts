@@ -225,6 +225,146 @@ export async function setQuoteStatus(
 }
 
 // =============================================================================
+// Send quote: mint accept_token, build the email body with the public URL,
+// send via the caller's connected Gmail, flip status to sent.
+// =============================================================================
+const sendQuoteSchema = z.object({
+  id: z.string().uuid(),
+  message: stringy.max(20_000).optional().nullable(),
+});
+
+export async function sendQuoteEmail(raw: z.input<typeof sendQuoteSchema>) {
+  const { randomBytes } = await import("node:crypto");
+  const { createSupabaseAdminClient } = await import(
+    "@/lib/supabase/admin-server"
+  );
+  const { sendGmailMessage } = await import("@/lib/google/gmail");
+  const { recordOutboundMessage } = await import(
+    "@/lib/server/email-sync"
+  );
+  const { appUrl } = await import("@/lib/stripe/client");
+  const { formatCents } = await import("@/lib/constants/catering");
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const parsed = sendQuoteSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Invalid input" };
+  const v = parsed.data;
+
+  const admin = createSupabaseAdminClient();
+  const { data: account } = await admin
+    .from("gmail_accounts")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (!account) {
+    return {
+      error:
+        "Connect Gmail in /catering/integrations before sending quotes.",
+    };
+  }
+
+  const { data: quote } = await admin
+    .from("catering_quotes")
+    .select(
+      "id, quote_number, title, event_date, total_cents, deposit_required_cents, accept_token, status, lead_id, location_id, contact:catering_contacts!catering_quotes_contact_id_fkey(id, full_name, email)",
+    )
+    .eq("id", v.id)
+    .maybeSingle();
+  if (!quote) return { error: "Quote not found" };
+
+  const contact = (
+    quote as unknown as {
+      contact: { id: string; full_name: string; email: string | null } | null;
+    }
+  ).contact;
+  if (!contact?.email) {
+    return { error: "Quote contact has no email address on file" };
+  }
+
+  // Mint the accept_token lazily so resending uses the same public URL.
+  let acceptToken = quote.accept_token as string | null;
+  if (!acceptToken) {
+    acceptToken = randomBytes(20).toString("base64url");
+    await admin
+      .from("catering_quotes")
+      .update({ accept_token: acceptToken })
+      .eq("id", quote.id);
+  }
+
+  const host = appUrl().replace(/\/$/, "");
+  const publicUrl = `${host}/q/${encodeURIComponent(acceptToken)}`;
+
+  const greeting = contact.full_name.split(/\s+/)[0];
+  const body =
+    v.message?.trim() ||
+    [
+      `Hi ${greeting},`,
+      ``,
+      `Here's your catering quote for "${quote.title}"${quote.event_date ? ` on ${new Date(quote.event_date).toLocaleDateString()}` : ""}.`,
+      ``,
+      `Total: ${formatCents(quote.total_cents)}`,
+      `Non-refundable deposit to confirm: ${formatCents(quote.deposit_required_cents || 50000)}`,
+      ``,
+      `Review and accept here:`,
+      publicUrl,
+      ``,
+      `Reply with any questions — we're happy to tweak the package.`,
+    ].join("\n");
+
+  let sent;
+  try {
+    sent = await sendGmailMessage({
+      account,
+      to: contact.email,
+      subject: `Catering quote ${quote.quote_number} — ${quote.title}`,
+      bodyText: body,
+    });
+  } catch (err) {
+    console.error("[send-quote-email] gmail send failed:", err);
+    const msg = err instanceof Error ? err.message : "Could not send email";
+    return { error: msg };
+  }
+
+  await recordOutboundMessage({
+    account,
+    messageId: sent.id,
+    threadId: sent.threadId,
+    to: contact.email,
+    subject: `Catering quote ${quote.quote_number} — ${quote.title}`,
+    bodyText: body,
+    bodyHtml: null,
+    leadId: quote.lead_id ?? null,
+    contactId: contact.id,
+  });
+
+  const now = new Date().toISOString();
+  await admin
+    .from("catering_quotes")
+    .update({
+      status: "sent",
+      sent_at: now,
+    })
+    .eq("id", quote.id);
+
+  await logActivity({
+    verb: "sent",
+    objectType: "catering_quote",
+    objectId: quote.id,
+    summary: `${quote.quote_number} → ${contact.email}`,
+    locationId: quote.location_id,
+  });
+
+  revalidatePath(`/catering/quotes/${quote.id}`);
+  return { ok: true, publicUrl };
+}
+
+// =============================================================================
 // Quote line items
 // =============================================================================
 const lineSchema = z.object({

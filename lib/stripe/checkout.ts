@@ -14,6 +14,74 @@ export interface CreateCheckoutSessionInput {
   cancelPath?: string;
 }
 
+export interface CreateQuoteDepositSessionInput {
+  stripeAccountId: string;
+  amountCents: number;
+  currency: string;
+  quoteId: string;
+  quoteNumber: string;
+  quoteTitle: string;
+  customerEmail?: string | null;
+  successPath: string;
+  cancelPath: string;
+}
+
+// Public quote deposit checkout. Marks itself with swell_quote_id metadata
+// so the webhook can flip the quote into the accepted state and stash the
+// payment_intent id when the customer's card clears.
+export async function createQuoteDepositSession(
+  input: CreateQuoteDepositSessionInput,
+) {
+  const stripe = getStripeClient();
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: input.currency,
+            unit_amount: input.amountCents,
+            product_data: {
+              name: `Non-refundable deposit · ${input.quoteNumber}`,
+              description: input.quoteTitle.slice(0, 500),
+            },
+          },
+        },
+      ],
+      customer_email: input.customerEmail ?? undefined,
+      success_url: input.successPath,
+      cancel_url: input.cancelPath,
+      metadata: {
+        swell_quote_id: input.quoteId,
+        swell_quote_number: input.quoteNumber,
+      },
+      payment_intent_data: {
+        metadata: {
+          swell_quote_id: input.quoteId,
+          swell_quote_number: input.quoteNumber,
+        },
+      },
+      expires_at: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+    },
+    { stripeAccount: input.stripeAccountId },
+  );
+
+  return {
+    sessionId: session.id,
+    paymentIntentId:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : (session.payment_intent?.id ?? null),
+    url: session.url ?? "",
+    expiresAt: session.expires_at
+      ? new Date(session.expires_at * 1000).toISOString()
+      : null,
+  };
+}
+
 export async function createCheckoutSession(input: CreateCheckoutSessionInput) {
   const stripe = getStripeClient();
   const base = appUrl();

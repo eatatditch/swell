@@ -18,6 +18,10 @@ const PUBLIC_PATHS = [
   // cookie. Auth is enforced inside the route handler via x-vercel-cron
   // header / CRON_SECRET bearer.
   "/api/cron",
+  // Public quote acceptance pages + their accept / decline endpoints.
+  // Auth is the unguessable accept_token in the URL.
+  "/q",
+  "/api/quotes",
 ];
 
 function isPublic(pathname: string): boolean {

@@ -66,6 +66,24 @@ export async function POST(request: Request) {
 
 async function handleCheckoutCompleted(event: Stripe.Event) {
   const session = event.data.object as Stripe.Checkout.Session;
+
+  // Public quote deposit path: metadata.swell_quote_id is set in
+  // createQuoteDepositSession. Marks the quote as deposit-paid and stamps
+  // the payment intent.
+  const quoteId =
+    (session.metadata?.swell_quote_id as string | undefined) ??
+    (typeof session.payment_intent === "object" &&
+    session.payment_intent &&
+    "metadata" in session.payment_intent
+      ? (session.payment_intent.metadata?.swell_quote_id as
+          | string
+          | undefined)
+      : undefined);
+  if (quoteId) {
+    await handleQuoteDepositCompleted(event, session, quoteId);
+    return;
+  }
+
   const invoiceId =
     (session.metadata?.swell_invoice_id as string | undefined) ??
     (typeof session.payment_intent === "object" &&
@@ -200,4 +218,38 @@ async function handleAccountUpdated(event: Stripe.Event) {
   } catch {
     /* nothing to do */
   }
+}
+
+async function handleQuoteDepositCompleted(
+  event: Stripe.Event,
+  session: Stripe.Checkout.Session,
+  quoteId: string,
+) {
+  const supabase = createSupabaseServerClient();
+  const paidAt = new Date(event.created * 1000).toISOString();
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+
+  await supabase
+    .from("catering_quotes")
+    .update({
+      accepted_at: paidAt,
+      deposit_paid_at: paidAt,
+      deposit_payment_intent_id: paymentIntentId,
+      status: "accepted",
+    })
+    .eq("id", quoteId);
+
+  await logActivity({
+    verb: "deposit_paid",
+    objectType: "catering_quote",
+    objectId: quoteId,
+    summary: `Deposit received via Stripe`,
+    metadata: {
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: paymentIntentId,
+    },
+  });
 }

@@ -586,6 +586,9 @@ export interface CateringQuote {
   declined_at: string | null;
   decline_reason: string | null;
   converted_invoice_id: string | null;
+  accept_token: string | null;
+  deposit_paid_at: string | null;
+  deposit_payment_intent_id: string | null;
 }
 
 export interface CateringQuoteLineItem {

@@ -31,6 +31,7 @@ import {
   addQuoteLine,
   convertQuoteToInvoice,
   deleteQuoteLine,
+  sendQuoteEmail,
   setQuoteStatus,
   updateQuote,
   updateQuoteLine,
@@ -766,10 +767,24 @@ function ActionsPanel({ quote }: { quote: FullQuote }) {
     });
   }
 
-  const canSend = quote.status === "draft" && quote.lines.length > 0;
+  const canSend =
+    (quote.status === "draft" || quote.status === "sent") &&
+    quote.lines.length > 0;
   const canAcceptOrDecline = quote.status === "sent";
   const canConvert =
     quote.status === "accepted" && !quote.converted_invoice_id;
+
+  function sendByEmail() {
+    setError(null);
+    startTransition(async () => {
+      const res = await sendQuoteEmail({ id: quote.id });
+      if ("error" in res && res.error) {
+        setError(res.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   return (
     <section className="space-y-2 rounded-2xl border border-border bg-card p-4">
@@ -779,12 +794,23 @@ function ActionsPanel({ quote }: { quote: FullQuote }) {
         <Button
           variant="accent"
           className="w-full gap-1.5"
-          onClick={() => update("sent")}
+          onClick={sendByEmail}
           disabled={pending}
         >
           <Send className="h-4 w-4" />
-          Mark as sent
+          {quote.status === "sent" ? "Resend quote" : "Send quote by email"}
         </Button>
+      ) : null}
+
+      {quote.accept_token && quote.status !== "draft" ? (
+        <a
+          href={`/q/${encodeURIComponent(quote.accept_token)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="block w-full rounded-md border border-border bg-background px-3 py-2 text-center text-xs font-semibold text-muted-foreground hover:border-primary hover:text-foreground"
+        >
+          Open guest view ↗
+        </a>
       ) : null}
 
       {canAcceptOrDecline ? (
