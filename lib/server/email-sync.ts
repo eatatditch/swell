@@ -11,6 +11,7 @@ import {
   parseAddressList,
   type GmailMessageDetail,
 } from "@/lib/google/gmail";
+import { unmangleUtf8 } from "@/lib/google/text-normalize";
 import type { GmailAccount } from "@/lib/types/database";
 
 interface SyncResult {
@@ -205,10 +206,10 @@ export async function saveMessage(args: SaveMessageArgs): Promise<boolean> {
         to_emails: to,
         cc_emails: cc,
         bcc_emails: bcc,
-        subject: subject ?? null,
-        snippet: detail.snippet ?? null,
-        body_text: text,
-        body_html: html,
+        subject: unmangleUtf8(subject),
+        snippet: unmangleUtf8(detail.snippet),
+        body_text: unmangleUtf8(text),
+        body_html: unmangleUtf8(html),
         labels: detail.labelIds,
         sent_at: sentAt,
         contact_id: contactId,
