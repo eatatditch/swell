@@ -12,7 +12,11 @@ export const runtime = "nodejs";
 // Disconnects the current user's Gmail. Revokes the refresh token at Google
 // (so the grant is gone on their side too) and deletes the row; the cascade
 // drops email_messages tied to that account.
-export async function GET(request: Request) {
+//
+// POST-only on purpose: when this was a GET, Next.js's auto-prefetch on the
+// "Disconnect" <Link> would fire the handler the moment the integrations
+// page rendered, silently dropping the freshly-saved row.
+export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
