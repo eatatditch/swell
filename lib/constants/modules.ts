@@ -127,6 +127,7 @@ export const MODULES: ModuleDef[] = [
       { label: "Billing", href: "/catering/billing" },
       { label: "Events", href: "/catering/events" },
       { label: "Calendar", href: "/catering/calendar" },
+      { label: "Integrations", href: "/catering/integrations" },
       { label: "Settings", href: "/catering/settings" },
     ],
   },

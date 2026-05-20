@@ -876,3 +876,51 @@ export interface LeadFormSubmission {
   ip: string | null;
   user_agent: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Gmail integration (Phase F)
+// ---------------------------------------------------------------------------
+
+export type GmailAccountStatus = "active" | "expired" | "revoked" | "error";
+
+export interface GmailAccount {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  google_user_id: string;
+  email: string;
+  access_token_enc: string;
+  refresh_token_enc: string;
+  token_expires_at: string | null;
+  scopes: string[];
+  history_id: string | null;
+  last_synced_at: string | null;
+  status: GmailAccountStatus;
+  last_error: string | null;
+}
+
+export type EmailDirection = "inbound" | "outbound";
+
+export interface EmailMessage {
+  id: string;
+  created_at: string;
+  account_id: string;
+  google_message_id: string;
+  thread_id: string;
+  direction: EmailDirection;
+  from_email: string | null;
+  from_name: string | null;
+  to_emails: string[];
+  cc_emails: string[];
+  bcc_emails: string[];
+  subject: string | null;
+  snippet: string | null;
+  body_text: string | null;
+  body_html: string | null;
+  labels: string[];
+  sent_at: string | null;
+  contact_id: string | null;
+  lead_id: string | null;
+  event_id: string | null;
+}
