@@ -3,10 +3,15 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { InvoiceStatusBadge } from "@/components/catering/status-badges";
 import { InvoiceBuilder } from "@/components/catering/invoices/invoice-builder";
+import { PaymentLinksCard } from "@/components/catering/invoices/payment-links-card";
 import { requireUser } from "@/lib/auth/get-user";
 import { getInvoiceFull } from "@/lib/server/catering-billing";
 import { listMenus, getMenuFull } from "@/lib/server/catering-menus";
 import { listPayments } from "@/lib/server/catering";
+import {
+  getSettingsForLocation,
+  listPaymentLinks,
+} from "@/lib/server/catering-settings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatEventDate } from "@/lib/constants/catering";
 
@@ -19,10 +24,15 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
   const invoice = await getInvoiceFull(params.id);
   if (!invoice) notFound();
 
-  const [menuStubs, payments] = await Promise.all([
-    listMenus({ includeArchived: false }),
-    invoice.event_id ? listInvoicePayments(invoice.id) : Promise.resolve([]),
-  ]);
+  const [menuStubs, payments, paymentLinks, locationSettings] =
+    await Promise.all([
+      listMenus({ includeArchived: false }),
+      invoice.event_id ? listInvoicePayments(invoice.id) : Promise.resolve([]),
+      listPaymentLinks(invoice.id),
+      invoice.location_id
+        ? getSettingsForLocation(invoice.location_id)
+        : Promise.resolve(null),
+    ]);
   const menus = (
     await Promise.all(menuStubs.map((m) => getMenuFull(m.id)))
   ).filter((m): m is NonNullable<typeof m> => m !== null);
@@ -40,6 +50,20 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
       />
 
       <InvoiceBuilder invoice={invoice} menus={menus} payments={payments} />
+
+      <div className="mt-4">
+        <PaymentLinksCard
+          invoiceId={invoice.id}
+          invoiceBalanceCents={invoice.balance_cents}
+          invoiceLocationId={invoice.location_id}
+          links={paymentLinks}
+          stripeConnected={
+            !!locationSettings?.stripe_account_id &&
+            locationSettings.stripe_account_status !== "disconnected"
+          }
+          chargesEnabled={!!locationSettings?.stripe_charges_enabled}
+        />
+      </div>
     </>
   );
 }

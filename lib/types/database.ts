@@ -656,6 +656,63 @@ export interface CateringInvoiceLineItem {
   total_cents: number;
 }
 
+// ---------------------------------------------------------------------------
+// Phase D — catering settings + Stripe Connect
+// ---------------------------------------------------------------------------
+
+export type StripeAccountStatus =
+  | "not_connected"
+  | "onboarding"
+  | "active"
+  | "restricted"
+  | "disconnected";
+
+export interface CateringSettings {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string | null;
+  default_tax_rate_bps: number;
+  default_gratuity_rate_bps: number;
+  default_deposit_percent_bps: number;
+  quote_terms: string | null;
+  invoice_terms: string | null;
+  reply_to_email: string | null;
+  sender_name: string | null;
+  stripe_account_id: string | null;
+  stripe_account_status: StripeAccountStatus;
+  stripe_charges_enabled: boolean;
+  stripe_payouts_enabled: boolean;
+  stripe_connected_at: string | null;
+  stripe_disconnected_at: string | null;
+}
+
+export type PaymentLinkStatus =
+  | "pending"
+  | "completed"
+  | "expired"
+  | "canceled"
+  | "failed";
+
+export interface CateringPaymentLink {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  invoice_id: string;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_account_id: string | null;
+  amount_cents: number;
+  currency: string;
+  status: PaymentLinkStatus;
+  url: string;
+  expires_at: string | null;
+  completed_at: string | null;
+  metadata: Record<string, unknown>;
+}
+
 export type EventUgcContentType =
   | "photos"
   | "reel"
