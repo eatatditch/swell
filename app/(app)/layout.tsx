@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { UnreadMailPoller } from "@/components/layout/unread-mail-poller";
 import { requireUser } from "@/lib/auth/get-user";
 import { ACTIVE_LOCATION_COOKIE } from "@/app/(app)/constants";
 import { countUnreadForCurrentUser } from "@/lib/server/inbox";
@@ -26,6 +27,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen w-full bg-background">
+      <UnreadMailPoller initialCount={unreadMail} />
       <Sidebar
         role={profile.role}
         navBadges={{ "/catering/mail": unreadMail }}

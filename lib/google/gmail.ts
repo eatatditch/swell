@@ -109,6 +109,29 @@ export async function sendGmailMessage(
 }
 
 // Build a minimal RFC822 message. Gmail's parser is lenient — bare LF works.
+// RFC 2047 encoded-word: any header value containing non-ASCII bytes gets
+// wrapped as =?UTF-8?B?<base64>?=. Without this, em dashes / smart quotes
+// / accented names render as mojibake (Ã¢Â€Â") in the recipient's inbox.
+function encodeHeaderValue(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/^[\x00-\x7F]*$/.test(value)) return value;
+  return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
+}
+
+// "Jane Doe <jane@x.com>" → encode only the display-name half if needed.
+function encodeAddress(addr: string): string {
+  const m = /^(.+?)\s*<([^>]+)>$/.exec(addr);
+  if (!m) return addr;
+  const name = m[1].trim().replace(/^"|"$/g, "");
+  return `${encodeHeaderValue(name)} <${m[2].trim()}>`;
+}
+
+function bodyAsBase64(body: string): string {
+  // Encode as base64 with CRLF line breaks every 76 chars (RFC compliance).
+  const b64 = Buffer.from(body, "utf8").toString("base64");
+  return b64.replace(/(.{76})/g, "$1\r\n");
+}
+
 function buildMime(opts: {
   from: string;
   to: string;
@@ -120,11 +143,13 @@ function buildMime(opts: {
   inReplyToMessageId?: string;
 }): string {
   const headers: string[] = [];
-  headers.push(`From: ${opts.from}`);
-  headers.push(`To: ${opts.to}`);
-  if (opts.cc.length) headers.push(`Cc: ${opts.cc.join(", ")}`);
-  if (opts.bcc.length) headers.push(`Bcc: ${opts.bcc.join(", ")}`);
-  headers.push(`Subject: ${opts.subject}`);
+  headers.push(`From: ${encodeAddress(opts.from)}`);
+  headers.push(`To: ${opts.to.split(",").map((a) => encodeAddress(a.trim())).join(", ")}`);
+  if (opts.cc.length)
+    headers.push(`Cc: ${opts.cc.map(encodeAddress).join(", ")}`);
+  if (opts.bcc.length)
+    headers.push(`Bcc: ${opts.bcc.map(encodeAddress).join(", ")}`);
+  headers.push(`Subject: ${encodeHeaderValue(opts.subject)}`);
   if (opts.inReplyToMessageId) {
     headers.push(`In-Reply-To: ${opts.inReplyToMessageId}`);
     headers.push(`References: ${opts.inReplyToMessageId}`);
@@ -137,15 +162,15 @@ function buildMime(opts: {
     const body = [
       `--${boundary}`,
       "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: 7bit",
+      "Content-Transfer-Encoding: base64",
       "",
-      opts.bodyText,
+      bodyAsBase64(opts.bodyText),
       "",
       `--${boundary}`,
       "Content-Type: text/html; charset=UTF-8",
-      "Content-Transfer-Encoding: 7bit",
+      "Content-Transfer-Encoding: base64",
       "",
-      opts.bodyHtml,
+      bodyAsBase64(opts.bodyHtml),
       "",
       `--${boundary}--`,
     ].join("\r\n");
@@ -156,11 +181,9 @@ function buildMime(opts: {
   headers.push(
     `Content-Type: ${isHtml ? "text/html" : "text/plain"}; charset=UTF-8`,
   );
-  return (
-    headers.join("\r\n") +
-    "\r\n\r\n" +
-    (opts.bodyHtml ?? opts.bodyText ?? "")
-  );
+  headers.push("Content-Transfer-Encoding: base64");
+  const rawBody = opts.bodyHtml ?? opts.bodyText ?? "";
+  return headers.join("\r\n") + "\r\n\r\n" + bodyAsBase64(rawBody);
 }
 
 function base64UrlEncode(str: string): string {
