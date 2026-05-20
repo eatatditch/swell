@@ -1,100 +1,114 @@
+"use client";
+
 import Link from "next/link";
-import { Mail, ExternalLink, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
+import { Mail, ArrowDownLeft, ArrowUpRight, Reply } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmailComposer } from "@/components/catering/emails/email-composer";
 import { cn } from "@/lib/utils";
 import type { EmailMessage } from "@/lib/types/database";
 
 interface LeadEmailThreadProps {
+  leadId: string;
   contactEmail: string | null;
   contactName: string;
   leadName?: string;
   emails: EmailMessage[];
   gmailConnected: boolean;
+  gmailEmail: string | null;
 }
 
 export function LeadEmailThread({
+  leadId,
   contactEmail,
   contactName,
   leadName,
   emails,
   gmailConnected,
+  gmailEmail,
 }: LeadEmailThreadProps) {
+  const [composeOpen, setComposeOpen] = useState(false);
   const subject = leadName ? `Catering inquiry — ${leadName}` : "Catering inquiry";
-  const mailtoHref = contactEmail
-    ? `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}`
-    : null;
 
   if (!gmailConnected) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          Connect your Gmail to see and reply to the full email thread with{" "}
+          Connect your Gmail to send and receive replies with{" "}
           <span className="font-semibold text-foreground">{contactName}</span>{" "}
-          right here. Until then, you can open a draft in your mail client.
+          right here. Messages on both sides will populate this thread.
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="accent" size="sm" className="gap-1.5">
-            <Link href="/catering/integrations">
-              <Mail className="h-4 w-4" />
-              Connect Gmail
-            </Link>
-          </Button>
-          {mailtoHref ? (
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
-              <a href={mailtoHref}>
-                <ExternalLink className="h-4 w-4" />
-                Email {contactName.split(" ")[0]}
-              </a>
-            </Button>
-          ) : null}
-        </div>
+        <Button asChild variant="accent" size="sm" className="gap-1.5">
+          <Link href="/catering/integrations" prefetch={false}>
+            <Mail className="h-4 w-4" />
+            Connect Gmail
+          </Link>
+        </Button>
       </div>
     );
   }
 
-  if (emails.length === 0) {
+  if (!contactEmail) {
     return (
-      <div className="space-y-3">
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          No emails yet. Any mail to or from{" "}
-          <span className="font-semibold text-foreground">
-            {contactEmail ?? contactName}
-          </span>{" "}
-          in your connected inbox will show up here once the next sync runs
-          (within a few minutes).
-        </div>
-        {mailtoHref ? (
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
-            <a href={mailtoHref}>
-              <ExternalLink className="h-4 w-4" />
-              Email {contactName.split(" ")[0]}
-            </a>
-          </Button>
-        ) : null}
+      <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+        This contact doesn&apos;t have an email address on file. Add one to the
+        contact record to start a conversation.
       </div>
     );
   }
 
-  // Render the thread newest-first.
+  // Most recent inbound message becomes the reply target so the thread stays
+  // threaded in Gmail.
+  const mostRecentInbound = emails.find((m) => m.direction === "inbound");
+
   return (
     <div className="space-y-3">
-      {emails.map((m) => (
-        <EmailMessageCard key={m.id} message={m} />
-      ))}
-      {mailtoHref ? (
-        <Button asChild variant="outline" size="sm" className="gap-1.5">
-          <a href={mailtoHref}>
-            <ExternalLink className="h-4 w-4" />
-            Reply in mail client
-          </a>
+      {emails.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+          No emails yet. Send the first one below, or wait for{" "}
+          <span className="font-semibold text-foreground">{contactName}</span>{" "}
+          to reach out — inbound mail syncs every few minutes.
+        </div>
+      ) : (
+        emails.map((m) => <EmailMessageCard key={m.id} message={m} />)
+      )}
+
+      {composeOpen ? (
+        <EmailComposer
+          leadId={leadId}
+          contactName={contactName}
+          contactEmail={contactEmail}
+          fromEmail={gmailEmail ?? "your gmail"}
+          defaultSubject={
+            mostRecentInbound?.subject
+              ? mostRecentInbound.subject.startsWith("Re:")
+                ? mostRecentInbound.subject
+                : `Re: ${mostRecentInbound.subject}`
+              : subject
+          }
+          inReplyToMessageId={mostRecentInbound?.google_message_id ?? undefined}
+          threadId={mostRecentInbound?.thread_id ?? undefined}
+          onSent={() => setComposeOpen(false)}
+        />
+      ) : (
+        <Button
+          type="button"
+          variant="accent"
+          size="sm"
+          onClick={() => setComposeOpen(true)}
+          className="gap-1.5"
+        >
+          <Reply className="h-3.5 w-3.5" />
+          {emails.length === 0 ? "Write email" : "Reply"}
         </Button>
-      ) : null}
+      )}
     </div>
   );
 }
 
 function EmailMessageCard({ message }: { message: EmailMessage }) {
+  const [expanded, setExpanded] = useState(false);
   const inbound = message.direction === "inbound";
   const Icon = inbound ? ArrowDownLeft : ArrowUpRight;
   const sender = message.from_name || message.from_email || "—";
@@ -103,6 +117,8 @@ function EmailMessageCard({ message }: { message: EmailMessage }) {
     ? new Date(message.sent_at).toLocaleString()
     : new Date(message.created_at).toLocaleString();
 
+  const fullBody = message.body_text ?? message.snippet ?? "";
+
   return (
     <div
       className={cn(
@@ -110,7 +126,11 @@ function EmailMessageCard({ message }: { message: EmailMessage }) {
         inbound ? "border-border" : "border-accent/30 bg-accent/5",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <button
+        type="button"
+        className="flex w-full items-start justify-between gap-2 text-left"
+        onClick={() => setExpanded((x) => !x)}
+      >
         <div className="flex items-start gap-2 text-sm">
           <Icon
             className={cn(
@@ -132,10 +152,16 @@ function EmailMessageCard({ message }: { message: EmailMessage }) {
             ) : null}
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground whitespace-nowrap">{date}</p>
-      </div>
-      {message.snippet ? (
-        <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground whitespace-nowrap">
+          {date}
+        </p>
+      </button>
+      {expanded ? (
+        <div className="mt-2 whitespace-pre-wrap rounded border border-border bg-background p-2 text-sm">
+          {fullBody}
+        </div>
+      ) : message.snippet ? (
+        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
           {message.snippet}
         </p>
       ) : null}
