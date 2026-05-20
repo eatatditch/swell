@@ -244,11 +244,13 @@ export default async function LeadDetailPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <LeadEmailThread
+                leadId={lead.id}
                 contactEmail={contact.email}
                 contactName={contact.full_name}
                 leadName={lead.event_type ?? contact.full_name}
                 emails={emails}
                 gmailConnected={gmailAccount?.status === "active"}
+                gmailEmail={gmailAccount?.email ?? null}
               />
             </CardContent>
           </Card>
