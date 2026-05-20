@@ -14,7 +14,7 @@ interface UnreadMailPollerProps {
 //   - Marking a thread read clear the badge immediately, not on next nav
 export function UnreadMailPoller({
   initialCount,
-  intervalMs = 20_000,
+  intervalMs = 2_000,
 }: UnreadMailPollerProps) {
   const router = useRouter();
   const lastCount = useRef(initialCount);
