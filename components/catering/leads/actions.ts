@@ -509,3 +509,114 @@ export async function convertLeadToEvent(raw: ConvertLeadInput) {
   revalidatePath("/catering", "layout");
   return { event };
 }
+
+// =============================================================================
+// Convert a lead → a draft quote
+//
+// Pre-fills the quote with everything the lead already knows about (contact,
+// location, desired date, party size, event type → title, location settings
+// for tax/gratuity defaults) and routes the operator straight into the quote
+// builder so they can add line items and send.
+// =============================================================================
+const convertToQuoteSchema = z.object({
+  leadId: z.string().uuid(),
+});
+
+export async function convertLeadToQuote(
+  raw: z.input<typeof convertToQuoteSchema>,
+) {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const parsed = convertToQuoteSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Invalid input" };
+  const v = parsed.data;
+
+  const { data: lead, error: leadErr } = await supabase
+    .from("catering_leads")
+    .select(
+      "*, contact:catering_contacts!catering_leads_contact_id_fkey(id, full_name)",
+    )
+    .eq("id", v.leadId)
+    .maybeSingle();
+  if (leadErr || !lead) return { error: leadErr?.message ?? "Lead not found" };
+
+  // Pull default tax / gratuity from the location's catering_settings if any.
+  let taxBps = 0;
+  let gratuityBps = 0;
+  if (lead.location_id) {
+    const { data: settings } = await supabase
+      .from("catering_settings")
+      .select("default_tax_rate_bps, default_gratuity_rate_bps")
+      .eq("location_id", lead.location_id)
+      .maybeSingle();
+    if (settings) {
+      taxBps = settings.default_tax_rate_bps ?? 0;
+      gratuityBps = settings.default_gratuity_rate_bps ?? 0;
+    }
+  }
+
+  const contact =
+    (lead as { contact?: { id: string; full_name: string } | null }).contact ??
+    null;
+  const title = lead.event_type
+    ? `${contact?.full_name ?? "Catering"} — ${lead.event_type}`
+    : `${contact?.full_name ?? "Catering"} inquiry`;
+
+  const { data: quote, error: quoteErr } = await supabase
+    .from("catering_quotes")
+    .insert({
+      created_by: user.id,
+      contact_id: lead.contact_id,
+      lead_id: lead.id,
+      location_id: lead.location_id,
+      title,
+      event_date: lead.desired_date ?? null,
+      guest_count: lead.party_size ?? null,
+      customer_notes: null,
+      internal_notes: lead.notes ?? null,
+      tax_rate_bps: taxBps,
+      gratuity_rate_bps: gratuityBps,
+      discount_cents: 0,
+      deposit_required_cents: 0,
+    })
+    .select("*")
+    .single();
+
+  if (quoteErr || !quote) {
+    return { error: quoteErr?.message ?? "Could not create quote" };
+  }
+
+  // Advance the lead to "quote_sent" once a quote exists, so the pipeline
+  // reflects the operator's actual progress.
+  if (lead.status === "lead" || lead.status === "follow_up") {
+    await supabase
+      .from("catering_leads")
+      .update({ status: "quote_sent" })
+      .eq("id", lead.id);
+  }
+
+  await logActivity({
+    verb: "quoted",
+    objectType: "catering_lead",
+    objectId: lead.id,
+    summary: `Quote ${quote.quote_number} drafted`,
+    locationId: lead.location_id,
+    metadata: { quote_id: quote.id },
+  });
+
+  await logActivity({
+    verb: "created",
+    objectType: "catering_quote",
+    objectId: quote.id,
+    summary: `${quote.quote_number}: ${quote.title}`,
+    locationId: quote.location_id,
+    metadata: { from_lead: lead.id },
+  });
+
+  revalidatePath("/catering", "layout");
+  return { quote };
+}
