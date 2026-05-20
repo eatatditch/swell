@@ -905,6 +905,60 @@ export interface GmailAccount {
   watch_history_id: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 11 — founder view
+// ---------------------------------------------------------------------------
+
+export type FounderPriorityStatus =
+  | "open"
+  | "in_progress"
+  | "blocked"
+  | "done"
+  | "archived";
+
+export interface FounderPriority {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  title: string;
+  description: string | null;
+  owner_id: string | null;
+  status: FounderPriorityStatus;
+  priority: Priority;
+  target_date: string | null;
+  position: number;
+  completed_at: string | null;
+}
+
+export interface DecisionLog {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  decided_on: string;
+  title: string;
+  context: string | null;
+  decision: string;
+  owner_id: string | null;
+  follow_up: string | null;
+  follow_up_due: string | null;
+  follow_up_done_at: string | null;
+}
+
+export interface FounderCashSnapshot {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  snapshot_date: string;
+  cash_on_hand_cents: number;
+  payables_cents: number;
+  receivables_cents: number;
+  weekly_burn_cents: number | null;
+  notes: string | null;
+}
+
 export type EmailDirection = "inbound" | "outbound";
 
 export interface EmailMessage {
