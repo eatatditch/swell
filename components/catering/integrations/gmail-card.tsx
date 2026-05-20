@@ -70,6 +70,10 @@ function DisconnectedView({ configured }: { configured: boolean }) {
         <Link
           href={configured ? "/integrations/gmail/connect" : "#"}
           aria-disabled={!configured}
+          // Don't prefetch: that would mint a fresh CSRF state row on every
+          // viewport intersection. Harmless (state expires in 10 min) but
+          // wasteful.
+          prefetch={false}
           className={cn(!configured && "pointer-events-none opacity-50")}
         >
           <Mail className="h-4 w-4" />
@@ -102,9 +106,14 @@ function ConnectedView({ account }: { account: GmailAccount }) {
             </p>
           </div>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/integrations/gmail/disconnect">Disconnect</Link>
-        </Button>
+        {/* POST form, not a Link — Next.js prefetches Link destinations on
+            viewport intersection, and a GET disconnect route would fire
+            instantly the moment this card rendered. */}
+        <form action="/integrations/gmail/disconnect" method="POST">
+          <Button type="submit" variant="outline" size="sm">
+            Disconnect
+          </Button>
+        </form>
       </div>
       {account.last_error ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
