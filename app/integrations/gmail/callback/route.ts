@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
@@ -109,24 +110,40 @@ export async function GET(request: Request) {
     .ilike("email", info.email)
     .maybeSingle();
 
+  let savedId: string | null = null;
   if (existing) {
-    const { error: updateErr } = await admin
+    const { data: updated, error: updateErr } = await admin
       .from("gmail_accounts")
       .update(payload)
-      .eq("id", existing.id);
-    if (updateErr) {
+      .eq("id", existing.id)
+      .select("id")
+      .single();
+    if (updateErr || !updated) {
       console.error("[gmail-callback] update failed:", updateErr);
       return back(request, "db_write_failed");
     }
+    savedId = updated.id;
   } else {
-    const { error: insertErr } = await admin
+    const { data: inserted, error: insertErr } = await admin
       .from("gmail_accounts")
-      .insert(payload);
-    if (insertErr) {
+      .insert(payload)
+      .select("id")
+      .single();
+    if (insertErr || !inserted) {
       console.error("[gmail-callback] insert failed:", insertErr);
       return back(request, "db_write_failed");
     }
+    savedId = inserted.id;
   }
+  console.log(
+    `[gmail-callback] saved account ${savedId} for ${info.email} (user ${user.id})`,
+  );
+
+  // Server components in /catering subtree cache the result of
+  // getCurrentUserGmailAccount / listEmailsForLead. Invalidate so the next
+  // navigation sees the new account row instead of the pre-connect cached
+  // render.
+  revalidatePath("/catering", "layout");
 
   const redirect = new URL("/catering/integrations", request.url);
   redirect.searchParams.set("connected", "1");
