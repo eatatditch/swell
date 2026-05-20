@@ -342,6 +342,18 @@ export function validateSubmission(
     if (field.type === "email") {
       const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(raw));
       if (!ok) errors.push({ key: field.key, message: "Enter a valid email" });
+    } else if (field.type === "time") {
+      // Time inputs come back as "HH:MM" (24-hour). Reject anything that
+      // doesn't land on a 15-minute boundary so guests can't type 6:43.
+      const m = /^(\d{2}):(\d{2})$/.exec(String(raw));
+      if (!m) {
+        errors.push({ key: field.key, message: `${field.label} must be a valid time` });
+      } else if (Number.parseInt(m[2], 10) % 15 !== 0) {
+        errors.push({
+          key: field.key,
+          message: `${field.label} must be on a 15-minute interval (e.g. 6:00, 6:15, 6:30, 6:45)`,
+        });
+      }
     } else if (field.type === "number") {
       const n = Number.parseFloat(String(raw));
       if (!Number.isFinite(n)) {

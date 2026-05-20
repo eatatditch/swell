@@ -365,6 +365,9 @@ function FieldRenderer({
         max={field.max}
         minLength={field.minLength}
         maxLength={field.maxLength}
+        // Snap time pickers to 15-minute increments so guests can't pick
+        // 6:43 PM. 900 = 15 * 60 seconds.
+        step={field.type === "time" ? 900 : undefined}
         inputMode={
           field.type === "phone"
             ? "tel"
