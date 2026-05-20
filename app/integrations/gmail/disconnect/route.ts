@@ -26,11 +26,18 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data: account } = await admin
     .from("gmail_accounts")
-    .select("id, refresh_token_enc")
+    .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (account) {
+    // Stop the Pub/Sub watch so Gmail stops publishing to our topic.
+    try {
+      const { stopGmailWatch } = await import("@/lib/google/gmail");
+      await stopGmailWatch(account as never);
+    } catch {
+      /* non-fatal */
+    }
     try {
       const refresh = decryptToken(account.refresh_token_enc);
       await revokeToken(refresh);

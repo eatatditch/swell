@@ -22,6 +22,9 @@ const PUBLIC_PATHS = [
   // Auth is the unguessable accept_token in the URL.
   "/q",
   "/api/quotes",
+  // Google Pub/Sub pushes Gmail change notifications here with an OIDC
+  // bearer. Auth is enforced inside the route via JWKS verification.
+  "/api/integrations",
 ];
 
 function isPublic(pathname: string): boolean {

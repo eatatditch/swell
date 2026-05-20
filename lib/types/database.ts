@@ -901,6 +901,8 @@ export interface GmailAccount {
   last_synced_at: string | null;
   status: GmailAccountStatus;
   last_error: string | null;
+  watch_expires_at: string | null;
+  watch_history_id: string | null;
 }
 
 export type EmailDirection = "inbound" | "outbound";

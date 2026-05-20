@@ -139,6 +139,37 @@ export async function GET(request: Request) {
     `[gmail-callback] saved account ${savedId} for ${info.email} (user ${user.id})`,
   );
 
+  // Fire up the Pub/Sub watch immediately so this account starts getting
+  // real-time mail notifications. Non-fatal if it fails — the 5-min cron
+  // is still polling in the background and the operator can reconnect.
+  try {
+    const { pubsubConfigured, pubsubTopic } = await import(
+      "@/lib/google/pubsub"
+    );
+    if (pubsubConfigured() && savedId) {
+      const { watchGmailAccount } = await import("@/lib/google/gmail");
+      const { data: full } = await admin
+        .from("gmail_accounts")
+        .select("*")
+        .eq("id", savedId)
+        .single();
+      if (full) {
+        const watch = await watchGmailAccount(full, pubsubTopic());
+        await admin
+          .from("gmail_accounts")
+          .update({
+            watch_history_id: watch.historyId,
+            watch_expires_at: new Date(
+              Number.parseInt(watch.expiration, 10),
+            ).toISOString(),
+          })
+          .eq("id", savedId);
+      }
+    }
+  } catch (err) {
+    console.error("[gmail-callback] watch failed (non-fatal):", err);
+  }
+
   // Server components in /catering subtree cache the result of
   // getCurrentUserGmailAccount / listEmailsForLead. Invalidate so the next
   // navigation sees the new account row instead of the pre-connect cached
