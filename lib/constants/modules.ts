@@ -119,6 +119,7 @@ export const MODULES: ModuleDef[] = [
     subNav: [
       { label: "Overview", href: "/catering" },
       { label: "Pipeline", href: "/catering/leads" },
+      { label: "Mail", href: "/catering/mail" },
       { label: "Contacts", href: "/catering/contacts" },
       { label: "Forms", href: "/catering/forms" },
       { label: "Menus", href: "/catering/menus" },

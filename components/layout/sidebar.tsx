@@ -6,9 +6,10 @@ import type { Role } from "@/lib/types/database";
 
 interface SidebarProps {
   role: Role;
+  navBadges?: Record<string, number>;
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, navBadges }: SidebarProps) {
   return (
     <aside className="hidden h-screen w-60 shrink-0 flex-col bg-primary text-primary-foreground md:flex">
       <div className="flex h-16 items-center gap-2 border-b border-primary-foreground/10 px-5">
@@ -20,7 +21,7 @@ export function Sidebar({ role }: SidebarProps) {
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <SidebarNav role={role} />
+        <SidebarNav role={role} navBadges={navBadges} />
       </div>
       <div className="border-t border-primary-foreground/10 px-5 py-3 text-xs text-primary-foreground/60">
         Ditch internal OS
