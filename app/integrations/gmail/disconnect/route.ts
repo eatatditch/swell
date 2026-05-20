@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
@@ -34,6 +35,10 @@ export async function GET(request: Request) {
     }
     await admin.from("gmail_accounts").delete().eq("id", account.id);
   }
+
+  // Match the callback route — wipe the catering subtree cache so the
+  // /catering/leads/[id] pages immediately reflect the disconnected state.
+  revalidatePath("/catering", "layout");
 
   const url = new URL("/catering/integrations", request.url);
   url.searchParams.set("disconnected", "1");
