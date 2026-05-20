@@ -9,6 +9,7 @@ import type {
   EventPaymentStatus,
   EventUgcContentType,
   EventUgcStatus,
+  ModifierSelectionKind,
   ReviewPlatform,
 } from "@/lib/types/database";
 
@@ -102,6 +103,25 @@ export const SERVICE_TYPE_LABELS: Record<CateringServiceType, string> = {
   cocktail: "Cocktail",
   food_truck: "Food truck",
   other: "Other",
+};
+
+// Catering menu library — common unit suggestions for items.
+export const MENU_ITEM_UNITS: string[] = [
+  "each",
+  "per person",
+  "per dozen",
+  "per half dozen",
+  "half tray",
+  "full tray",
+  "per pound",
+  "per bottle",
+  "per gallon",
+  "per hour",
+];
+
+export const MODIFIER_SELECTION_LABELS: Record<ModifierSelectionKind, string> = {
+  single: "Pick one",
+  multi: "Pick multiple",
 };
 
 export const FOLLOWUP_KINDS: CateringFollowupKind[] = ["call", "email", "task"];

@@ -417,6 +417,87 @@ export interface CateringEvent {
   cancel_reason: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Phase B — catering menu library (reusable menus → sections → items)
+// ---------------------------------------------------------------------------
+
+export interface CateringMenu {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  location_id: string | null;
+  name: string;
+  description: string | null;
+  default_service_type: CateringServiceType;
+  is_archived: boolean;
+  position: number;
+}
+
+export interface CateringMenuSection {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  menu_id: string;
+  position: number;
+  name: string;
+  description: string | null;
+}
+
+export interface CateringMenuSubsection {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  section_id: string;
+  position: number;
+  name: string;
+  description: string | null;
+}
+
+export interface CateringMenuItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  section_id: string;
+  subsection_id: string | null;
+  position: number;
+  name: string;
+  description: string | null;
+  unit: string;
+  price_cents: number;
+  min_quantity: number | null;
+  allergens: string[];
+  image_url: string | null;
+  is_available: boolean;
+}
+
+export type ModifierSelectionKind = "single" | "multi";
+
+export interface CateringMenuModifier {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  item_id: string;
+  position: number;
+  name: string;
+  selection_kind: ModifierSelectionKind;
+  required: boolean;
+  min_select: number;
+  max_select: number | null;
+}
+
+export interface CateringMenuModifierOption {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  modifier_id: string;
+  position: number;
+  name: string;
+  price_delta_cents: number;
+  is_default: boolean;
+}
+
 export type EventMenuCategory =
   | "food"
   | "beverage"
