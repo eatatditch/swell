@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import { Stamp } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signOffCourse } from "@/components/training/actions";
+import { TRAINING_STAFF_TYPE_SHORT } from "@/lib/constants/training";
 import type { SignoffRequest } from "@/lib/server/training";
 
-function initials(name: string | null, email: string | null) {
-  const s = (name ?? email ?? "·").trim();
+function initials(name: string) {
+  const s = name.trim();
   const parts = s.split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return s.slice(0, 2).toUpperCase();
@@ -22,7 +23,7 @@ export function SignoffQueue({ requests }: { requests: SignoffRequest[] }) {
   return (
     <ul className="space-y-2">
       {requests.map((r) => (
-        <SignoffRow key={`${r.user.id}-${r.course.id}`} req={r} />
+        <SignoffRow key={`${r.staff.id}-${r.course.id}`} req={r} />
       ))}
     </ul>
   );
@@ -38,7 +39,7 @@ function SignoffRow({ req }: { req: SignoffRequest }) {
     setError(null);
     startTransition(async () => {
       const res = await signOffCourse({
-        userId: req.user.id,
+        staffId: req.staff.id,
         courseId: req.course.id,
         notes: notes || null,
       });
@@ -54,16 +55,13 @@ function SignoffRow({ req }: { req: SignoffRequest }) {
     <li className="rounded-lg border bg-card p-3">
       <div className="flex flex-wrap items-start gap-3">
         <Avatar className="h-8 w-8">
-          {req.user.avatar_url ? (
-            <AvatarImage src={req.user.avatar_url} alt="" />
-          ) : null}
           <AvatarFallback className="text-[10px]">
-            {initials(req.user.full_name, req.user.email)}
+            {initials(req.staff.full_name)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="font-medium">
-            {req.user.full_name ?? req.user.email ?? "—"}
+            {`${req.staff.full_name} (${TRAINING_STAFF_TYPE_SHORT[req.staff.staff_type]})`}
             <span className="ml-1 text-sm text-muted-foreground">
               · {req.course.title}
             </span>

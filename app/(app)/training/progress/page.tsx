@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/data/empty-state";
 import { AssignPathDialog } from "@/components/training/admin/assign-path-dialog";
@@ -26,19 +26,18 @@ import {
   getTeamProgress,
 } from "@/lib/server/training";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ROLE_LABELS } from "@/lib/constants/roles";
+import { TRAINING_STAFF_TYPE_LABELS } from "@/lib/constants/training";
 import { cn } from "@/lib/utils";
 import type {
   Certification,
-  ProfileLite,
-  Role,
   TrainingCourse,
   TrainingPath,
   TrainingPathCourse,
+  TrainingStaff,
 } from "@/lib/types/database";
 
-function initials(name: string | null, email: string | null) {
-  const s = (name ?? email ?? "·").trim();
+function initials(name: string | null) {
+  const s = (name ?? "·").trim();
   const parts = s.split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return s.slice(0, 2).toUpperCase();
@@ -65,14 +64,14 @@ export default async function TrainingProgressPage() {
       .eq("is_active", true)
       .order("title"),
     supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url, role")
+      .from("training_staff")
+      .select("id, full_name, staff_type")
       .eq("is_active", true)
       .order("full_name"),
     supabase
       .from("certifications")
       .select(
-        "*, user:profiles!certifications_user_id_fkey(id, full_name, email, avatar_url)",
+        "*, staff:training_staff!certifications_staff_id_fkey(id, full_name, staff_type)",
       )
       .order("expires_on", { ascending: true, nullsFirst: false }),
   ]);
@@ -82,9 +81,12 @@ export default async function TrainingProgressPage() {
     path_courses: (TrainingPathCourse & { course: TrainingCourse })[];
   })[];
   const courses = (coursesRes.data ?? []) as TrainingCourse[];
-  const staff = (staffRes.data ?? []) as (ProfileLite & { role: Role })[];
+  const staff = (staffRes.data ?? []) as Pick<
+    TrainingStaff,
+    "id" | "full_name" | "staff_type"
+  >[];
   const certs = (certsRes.data ?? []) as (Certification & {
-    user: ProfileLite | null;
+    staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type"> | null;
   })[];
 
   const teamSize = rows.length;
@@ -197,7 +199,7 @@ export default async function TrainingProgressPage() {
                     <thead>
                       <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2 font-medium">Person</th>
-                        <th className="px-3 py-2 font-medium">Role</th>
+                        <th className="px-3 py-2 font-medium">Type</th>
                         <th className="px-3 py-2 text-right font-medium">
                           Lessons
                         </th>
@@ -219,36 +221,25 @@ export default async function TrainingProgressPage() {
                               );
                         return (
                           <tr
-                            key={r.user.id}
+                            key={r.staff.id}
                             className="border-t border-border align-top"
                           >
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-7 w-7">
-                                  {r.user.avatar_url ? (
-                                    <AvatarImage
-                                      src={r.user.avatar_url}
-                                      alt=""
-                                    />
-                                  ) : null}
                                   <AvatarFallback className="text-[10px]">
-                                    {initials(
-                                      r.user.full_name,
-                                      r.user.email,
-                                    )}
+                                    {initials(r.staff.full_name)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
                                   <p className="truncate font-medium">
-                                    {r.user.full_name ??
-                                      r.user.email ??
-                                      "—"}
+                                    {r.staff.full_name}
                                   </p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
-                              {ROLE_LABELS[r.user.role]}
+                              {TRAINING_STAFF_TYPE_LABELS[r.staff.staff_type]}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
                               <div className="inline-flex flex-col items-end gap-1">
@@ -330,7 +321,9 @@ export default async function TrainingProgressPage() {
 function TeamCertList({
   certs,
 }: {
-  certs: (Certification & { user: ProfileLite | null })[];
+  certs: (Certification & {
+    staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type"> | null;
+  })[];
 }) {
   if (certs.length === 0) {
     return (
@@ -341,28 +334,29 @@ function TeamCertList({
       />
     );
   }
-  // Group by user.
-  const byUser = new Map<string, {
-    user: ProfileLite;
-    items: Certification[];
-  }>();
+  // Group by staff.
+  const byStaff = new Map<
+    string,
+    {
+      staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type">;
+      items: Certification[];
+    }
+  >();
   for (const c of certs) {
-    if (!c.user) continue;
-    const e = byUser.get(c.user.id) ?? { user: c.user, items: [] };
+    if (!c.staff) continue;
+    const e = byStaff.get(c.staff.id) ?? { staff: c.staff, items: [] };
     e.items.push(c);
-    byUser.set(c.user.id, e);
+    byStaff.set(c.staff.id, e);
   }
-  const groups = [...byUser.values()].sort((a, b) =>
-    (a.user.full_name ?? a.user.email ?? "").localeCompare(
-      b.user.full_name ?? b.user.email ?? "",
-    ),
+  const groups = [...byStaff.values()].sort((a, b) =>
+    a.staff.full_name.localeCompare(b.staff.full_name),
   );
   return (
     <div className="space-y-5">
       {groups.map((g) => (
-        <div key={g.user.id}>
+        <div key={g.staff.id}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {g.user.full_name ?? g.user.email}
+            {g.staff.full_name}
           </p>
           <CertificationList certifications={g.items} canManage />
         </div>

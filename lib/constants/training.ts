@@ -1,7 +1,33 @@
 import type {
   TrainingQuestionKind,
   TrainingResourceKind,
+  TrainingStaffType,
 } from "@/lib/types/database";
+
+export const TRAINING_STAFF_TYPES: TrainingStaffType[] = [
+  "foh",
+  "boh",
+  "management",
+];
+
+export const TRAINING_STAFF_TYPE_LABELS: Record<TrainingStaffType, string> = {
+  foh: "Front of House",
+  boh: "Back of House",
+  management: "Management",
+};
+
+export const TRAINING_STAFF_TYPE_SHORT: Record<TrainingStaffType, string> = {
+  foh: "FOH",
+  boh: "BOH",
+  management: "Mgmt",
+};
+
+/** Generate a random 4-digit kiosk PIN as a zero-padded string. */
+export function generateKioskPin(): string {
+  return Math.floor(Math.random() * 10_000)
+    .toString()
+    .padStart(4, "0");
+}
 
 export const TRAINING_QUESTION_KINDS: TrainingQuestionKind[] = [
   "multiple_choice",

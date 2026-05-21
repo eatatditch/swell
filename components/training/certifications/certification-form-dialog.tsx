@@ -19,11 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createCertification } from "@/components/training/actions";
-import type { ProfileLite } from "@/lib/types/database";
+import { TRAINING_STAFF_TYPE_SHORT } from "@/lib/constants/training";
+import type { TrainingStaff } from "@/lib/types/database";
 
 interface CertificationFormDialogProps {
-  staff: ProfileLite[];
-  defaultUserId?: string;
+  staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type">[];
+  defaultStaffId?: string;
 }
 
 const COMMON_KINDS = [
@@ -37,11 +38,11 @@ const COMMON_KINDS = [
 
 export function CertificationFormDialog({
   staff,
-  defaultUserId,
+  defaultStaffId,
 }: CertificationFormDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState(defaultUserId ?? staff[0]?.id ?? "");
+  const [staffId, setStaffId] = useState(defaultStaffId ?? staff[0]?.id ?? "");
   const [kind, setKind] = useState(COMMON_KINDS[0]);
   const [name, setName] = useState("");
   const [issuingBody, setIssuingBody] = useState("");
@@ -55,7 +56,7 @@ export function CertificationFormDialog({
   const [pending, startTransition] = useTransition();
 
   function reset() {
-    setUserId(defaultUserId ?? staff[0]?.id ?? "");
+    setStaffId(defaultStaffId ?? staff[0]?.id ?? "");
     setKind(COMMON_KINDS[0]);
     setName("");
     setIssuingBody("");
@@ -68,7 +69,7 @@ export function CertificationFormDialog({
 
   function submit() {
     setError(null);
-    if (!userId) {
+    if (!staffId) {
       setError("Pick a team member");
       return;
     }
@@ -78,7 +79,7 @@ export function CertificationFormDialog({
     }
     startTransition(async () => {
       const res = await createCertification({
-        userId,
+        staffId,
         kind,
         name,
         issuingBody: issuingBody || null,
@@ -124,14 +125,14 @@ export function CertificationFormDialog({
               <Label htmlFor="cert-user">Team member</Label>
               <select
                 id="cert-user"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               >
                 <option value="">— Select —</option>
                 {staff.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.full_name ?? p.email ?? "(no name)"}
+                    {`${p.full_name} (${TRAINING_STAFF_TYPE_SHORT[p.staff_type]})`}
                   </option>
                 ))}
               </select>

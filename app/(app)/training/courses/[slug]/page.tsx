@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Circle, GraduationCap } from "lucide-react";
+import { ArrowLeft, Circle, GraduationCap } from "lucide-react";
 
 import {
   Card,
@@ -20,11 +20,10 @@ import {
   getCategories,
   getCourseWithLessons,
 } from "@/lib/server/training";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { formatDuration } from "@/lib/constants/training";
+import { formatDuration, TRAINING_STAFF_TYPE_LABELS } from "@/lib/constants/training";
 import { ROLE_LABELS } from "@/lib/constants/roles";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/types/database";
+import type { Role, TrainingStaffType } from "@/lib/types/database";
 
 export default async function CourseDetailPage({
   params,
@@ -39,38 +38,7 @@ export default async function CourseDetailPage({
 
   const categories = isManager ? await getCategories() : [];
 
-  const supabase = createSupabaseServerClient();
-  const lessonIds = course.lessons.map((l) => l.id);
-  const [progressRes, signoffRes] = await Promise.all([
-    lessonIds.length > 0
-      ? supabase
-          .from("training_progress")
-          .select("lesson_id")
-          .eq("user_id", profile.id)
-          .in("lesson_id", lessonIds)
-      : Promise.resolve({ data: [] as { lesson_id: string }[] }),
-    supabase
-      .from("training_signoffs")
-      .select("*, signer:profiles!training_signoffs_signed_by_fkey(full_name, email)")
-      .eq("user_id", profile.id)
-      .eq("course_id", course.id)
-      .maybeSingle(),
-  ]);
-
-  const completed = new Set(
-    (progressRes.data ?? []).map((p) => p.lesson_id as string),
-  );
-  const completedCount = completed.size;
   const totalCount = course.lessons.length;
-  const allLessonsDone = totalCount > 0 && completedCount === totalCount;
-  const signoff = signoffRes.data as
-    | {
-        id: string;
-        signed_at: string;
-        notes: string | null;
-        signer: { full_name: string | null; email: string | null } | null;
-      }
-    | null;
 
   return (
     <>
@@ -105,25 +73,11 @@ export default async function CourseDetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Progress
+              Lessons
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-3xl font-semibold tabular-nums">
-              {completedCount}/{totalCount}
-            </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full bg-accent transition-all"
-                style={{
-                  width: `${
-                    totalCount === 0
-                      ? 0
-                      : Math.round((completedCount / totalCount) * 100)
-                  }%`,
-                }}
-              />
-            </div>
+            <p className="text-3xl font-semibold tabular-nums">{totalCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -158,28 +112,20 @@ export default async function CourseDetailPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Sign-off
+              Audience
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {signoff ? (
-              <>
-                <p className="text-sm font-medium text-primary">Signed</p>
-                <p className="text-xs text-muted-foreground">
-                  {signoff.signed_at.slice(0, 10)}
-                  {signoff.signer?.full_name
-                    ? ` · ${signoff.signer.full_name}`
-                    : ""}
-                </p>
-              </>
-            ) : course.requires_signoff ? (
-              <p className="text-sm text-muted-foreground">
-                {allLessonsDone
-                  ? "Ready for a manager"
-                  : "Finish the lessons first"}
-              </p>
+            {course.applies_to_staff_types.length === 0 ? (
+              <p className="text-sm text-muted-foreground">All staff</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Not required</p>
+              <p className="text-sm">
+                {course.applies_to_staff_types
+                  .map(
+                    (t) => TRAINING_STAFF_TYPE_LABELS[t as TrainingStaffType],
+                  )
+                  .join(", ")}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -199,7 +145,7 @@ export default async function CourseDetailPage({
           <div>
             <CardTitle className="text-base">Lessons</CardTitle>
             <CardDescription>
-              Work through them in order. Each one stamps your progress.
+              Preview lessons. Staff work through them on the training kiosk.
             </CardDescription>
           </div>
           {isManager ? <LessonEditor courseId={course.id} /> : null}
@@ -217,57 +163,39 @@ export default async function CourseDetailPage({
             />
           ) : (
             <ol className="space-y-2">
-              {course.lessons.map((l, i) => {
-                const done = completed.has(l.id);
-                const previous = i === 0 ? true : completed.has(course.lessons[i - 1].id);
-                const locked = !done && !previous && !isManager;
-                return (
-                  <li
-                    key={l.id}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border bg-card p-3 transition-colors",
-                      !locked && !isManager && "hover:bg-muted/40",
-                      locked && "opacity-60",
-                    )}
+              {course.lessons.map((l, i) => (
+                <li
+                  key={l.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40",
+                  )}
+                >
+                  <Link
+                    href={`/training/lessons/${l.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-3"
                   >
-                    <Link
-                      href={locked ? "#" : `/training/lessons/${l.id}`}
-                      aria-disabled={locked || undefined}
-                      onClick={locked ? (e) => e.preventDefault() : undefined}
-                      className="flex min-w-0 flex-1 items-center gap-3"
-                    >
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      {done ? (
-                        <CheckCircle2 className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Circle className="h-5 w-5 text-muted-foreground" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{l.title}</p>
-                        {l.estimated_minutes ? (
-                          <p className="text-xs text-muted-foreground">
-                            {formatDuration(l.estimated_minutes)}
-                          </p>
-                        ) : null}
-                      </div>
-                      {locked ? (
-                        <span className="text-xs text-muted-foreground">
-                          Locked
-                        </span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <Circle className="h-5 w-5 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{l.title}</p>
+                      {l.estimated_minutes ? (
+                        <p className="text-xs text-muted-foreground">
+                          {formatDuration(l.estimated_minutes)}
+                        </p>
                       ) : null}
-                    </Link>
-                    {isManager ? (
-                      <LessonRowControls
-                        courseId={course.id}
-                        lessonIds={course.lessons.map((x) => x.id)}
-                        index={i}
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
+                    </div>
+                  </Link>
+                  {isManager ? (
+                    <LessonRowControls
+                      courseId={course.id}
+                      lessonIds={course.lessons.map((x) => x.id)}
+                      index={i}
+                    />
+                  ) : null}
+                </li>
+              ))}
             </ol>
           )}
         </CardContent>
