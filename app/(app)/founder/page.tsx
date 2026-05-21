@@ -18,6 +18,7 @@ import { CashSnapshotEditor } from "@/components/founder/cash/cash-snapshot-edit
 import { CashSnapshotList } from "@/components/founder/cash/cash-snapshot-list";
 import { CompanyIssueFeed } from "@/components/founder/issues/company-issue-feed";
 import { AccountabilityBoard } from "@/components/founder/accountability/accountability-board";
+import { BrandPurposePanel } from "@/components/founder/brand-purpose-panel";
 import { requireAdmin } from "@/lib/auth/get-user";
 import { getFounderData } from "@/lib/server/founder";
 import { formatCents } from "@/lib/constants/daily-ops";
@@ -83,6 +84,7 @@ export default async function FounderPage() {
           <TabsTrigger value="cash">Cash</TabsTrigger>
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="accountability">Accountability</TabsTrigger>
+          <TabsTrigger value="brand">Brand</TabsTrigger>
         </TabsList>
 
         <TabsContent value="priorities" className="space-y-4">
@@ -198,6 +200,10 @@ export default async function FounderPage() {
               <AccountabilityBoard rows={data.accountability} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="brand" className="space-y-4">
+          <BrandPurposePanel />
         </TabsContent>
       </Tabs>
     </>
