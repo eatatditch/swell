@@ -1,67 +1,42 @@
 import Link from "next/link";
 import {
-  Award,
+  BarChart3,
   BookOpen,
-  CheckCircle2,
-  Compass,
+  ClipboardCheck,
   GraduationCap,
-  ListChecks,
+  Users,
 } from "lucide-react";
 
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/data/empty-state";
-import { CertificationList } from "@/components/training/certifications/certification-list";
 import { AnnouncementBoard } from "@/components/training/announcement-board";
 import { PalomaSearch } from "@/components/training/paloma-search";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   canWriteContent,
   getActiveAnnouncements,
-  getUserTrainingOverview,
+  getStaffTypeSummary,
+  listAllTrainingStaff,
 } from "@/lib/server/training";
-import { formatDuration } from "@/lib/constants/training";
+import { TRAINING_STAFF_TYPE_LABELS } from "@/lib/constants/training";
 import { ROLE_LABELS } from "@/lib/constants/roles";
 
 export default async function TrainingHomePage() {
   const { profile } = await requireUser();
   const isManager = canWriteContent(profile.role);
-  const [overview, announcements] = await Promise.all([
-    getUserTrainingOverview(profile.id),
+
+  const [allStaff, typeSummary, announcements] = await Promise.all([
+    listAllTrainingStaff(),
+    getStaffTypeSummary(),
     getActiveAnnouncements(5),
   ]);
 
-  let totalCourses = 0;
-  let completedCourses = 0;
-  let overdueCount = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (const up of overview.paths) {
-    for (const pc of up.path.path_courses ?? []) {
-      totalCourses += 1;
-      if (overview.signoffsByCourseId.has(pc.course_id)) {
-        completedCourses += 1;
-      }
-    }
-    if (up.due_date && new Date(up.due_date) < today && !up.completed_at) {
-      overdueCount += 1;
-    }
-  }
-
-  const certsExpiringSoon = overview.certifications.filter((c) => {
-    if (!c.expires_on) return false;
-    const exp = new Date(c.expires_on);
-    exp.setHours(0, 0, 0, 0);
-    const diff = Math.round((exp.getTime() - today.getTime()) / 86_400_000);
-    return diff <= 30;
-  }).length;
+  const activeStaff = allStaff.filter((s) => s.is_active);
 
   return (
     <>
@@ -103,131 +78,79 @@ export default async function TrainingHomePage() {
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          icon={ListChecks}
-          label="Assigned paths"
-          value={String(overview.paths.length)}
+          icon={Users}
+          label="Active staff"
+          value={String(activeStaff.length)}
         />
-        <Stat
-          icon={CheckCircle2}
-          label="Courses signed off"
-          value={`${completedCourses}/${totalCourses}`}
-        />
-        <Stat
-          icon={BookOpen}
-          label="Overdue"
-          value={String(overdueCount)}
-          tone={overdueCount > 0 ? "warn" : "default"}
-        />
-        <Stat
-          icon={Award}
-          label="Certs expiring (30d)"
-          value={String(certsExpiringSoon)}
-          tone={certsExpiringSoon > 0 ? "warn" : "default"}
-        />
+        {typeSummary.map((t) => (
+          <Stat
+            key={t.staffType}
+            icon={GraduationCap}
+            label={TRAINING_STAFF_TYPE_LABELS[t.staffType]}
+            value={`${t.staffCount}`}
+            sub={`${t.completionPct}% complete`}
+          />
+        ))}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Your training paths</CardTitle>
-            <CardDescription>
-              Each path is a sequence of courses your manager assigned you.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {overview.paths.length === 0 ? (
-              <EmptyState
-                icon={Compass}
-                title="No paths assigned yet"
-                description={
-                  isManager
-                    ? "Browse the course library or assign yourself a path from Team progress."
-                    : "A manager will assign your path. In the meantime, check the course library."
-                }
-              />
-            ) : (
-              <ul className="space-y-3">
-                {overview.paths.map((up) => {
-                  const courses = up.path.path_courses ?? [];
-                  const done = courses.filter((pc) =>
-                    overview.signoffsByCourseId.has(pc.course_id),
-                  ).length;
-                  const pct =
-                    courses.length === 0
-                      ? 0
-                      : Math.round((done / courses.length) * 100);
-                  return (
-                    <li
-                      key={up.id}
-                      className="rounded-lg border bg-card p-4"
-                    >
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="font-medium">{up.path.name}</p>
-                        <span className="text-xs text-muted-foreground">
-                          {done}/{courses.length} courses
-                          {up.due_date ? ` · due ${up.due_date}` : ""}
-                        </span>
-                      </div>
-                      {up.path.description ? (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {up.path.description}
-                        </p>
-                      ) : null}
-                      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-accent transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <ul className="mt-3 space-y-1.5">
-                        {courses.map((pc) => {
-                          const signed = overview.signoffsByCourseId.has(
-                            pc.course_id,
-                          );
-                          return (
-                            <li key={pc.id}>
-                              <Link
-                                href={`/training/courses/${pc.course.slug}`}
-                                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
-                              >
-                                <span className="flex items-center gap-2">
-                                  {signed ? (
-                                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                                  ) : (
-                                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                  {pc.course.title}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDuration(pc.course.estimated_minutes)}
-                                </span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Certifications</CardTitle>
-            <CardDescription>Your active credentials.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CertificationList
-              certifications={overview.certifications}
-              canManage={false}
-            />
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NavCard
+          href="/training/staff"
+          icon={Users}
+          title="Roster"
+          description="Manage staff and kiosk PINs."
+        />
+        <NavCard
+          href="/training/courses"
+          icon={BookOpen}
+          title="Course catalog"
+          description="Browse and edit courses."
+        />
+        <NavCard
+          href="/training/progress"
+          icon={ClipboardCheck}
+          title="Team progress"
+          description="Who's on track, what's expiring."
+        />
+        <NavCard
+          href="/training/reports"
+          icon={BarChart3}
+          title="Reports"
+          description="Per-course completion."
+        />
       </div>
     </>
+  );
+}
+
+function NavCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+}: {
+  href: string;
+  icon: typeof Users;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-2xl border bg-card p-5 transition-colors hover:bg-muted/40"
+    >
+      <div className="flex items-start gap-3">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-bold leading-snug group-hover:underline">
+            {title}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -235,11 +158,13 @@ function Stat({
   icon: Icon,
   label,
   value,
+  sub,
   tone = "default",
 }: {
-  icon: typeof Compass;
+  icon: typeof Users;
   label: string;
   value: string;
+  sub?: string;
   tone?: "default" | "warn";
 }) {
   return (
@@ -260,6 +185,9 @@ function Stat({
         >
           {value}
         </p>
+        {sub ? (
+          <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -8,11 +8,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import { logActivity } from "@/lib/server/activity";
 import { notify } from "@/lib/server/notifications";
 import { canWriteContent } from "@/lib/server/training";
-import { shortAnswerMatches } from "@/lib/constants/training";
-import { ROLES } from "@/lib/constants/roles";
+import { requireKioskStaff } from "@/lib/server/training-staff";
+import { shortAnswerMatches, TRAINING_STAFF_TYPES } from "@/lib/constants/training";
 import type { Role, TrainingQuestionKind } from "@/lib/types/database";
 
-async function requireUser() {
+async function requireProfile() {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -32,7 +32,7 @@ async function requireUser() {
 }
 
 async function requireManager() {
-  const ctx = await requireUser();
+  const ctx = await requireProfile();
   if ("error" in ctx && ctx.error) return ctx;
   if (!ctx.role || !canWriteContent(ctx.role)) {
     return { ...ctx, error: "Managers only" as const };
@@ -41,7 +41,7 @@ async function requireManager() {
 }
 
 // ---------------------------------------------------------------------------
-// Lesson completion
+// Lesson completion — kiosk staff
 // ---------------------------------------------------------------------------
 
 const completeLessonSchema = z.object({
@@ -52,25 +52,24 @@ const completeLessonSchema = z.object({
 export async function completeLesson(
   raw: z.input<typeof completeLessonSchema>,
 ) {
-  const { supabase, userId, error: authError } = await requireUser();
-  if (authError) return { error: authError };
-
+  const staff = await requireKioskStaff();
   const parsed = completeLessonSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const v = parsed.data;
 
-  const { data: progress, error } = await supabase
+  const admin = createSupabaseAdminClient();
+  const { data: progress, error } = await admin
     .from("training_progress")
     .upsert(
       {
-        user_id: userId,
+        staff_id: staff.id,
         lesson_id: v.lessonId,
         completed_at: new Date().toISOString(),
         time_spent_seconds: v.timeSpentSeconds ?? null,
       },
-      { onConflict: "user_id,lesson_id" },
+      { onConflict: "staff_id,lesson_id" },
     )
     .select("*, lesson:training_lessons(id, title, course_id)")
     .single();
@@ -85,15 +84,14 @@ export async function completeLesson(
     objectId: v.lessonId,
     summary: (progress as { lesson?: { title?: string | null } | null })
       .lesson?.title ?? "Lesson",
+    metadata: { staff_id: staff.id, staff_name: staff.full_name },
   });
 
-  // Fire a sign-off-request notification when the user just finished the
-  // final lesson of a course that requires manager sign-off.
   const courseId =
     (progress as { lesson?: { course_id?: string | null } | null }).lesson
       ?.course_id ?? null;
   if (courseId) {
-    await notifySignoffIfReady(supabase, userId, courseId);
+    await notifySignoffIfReady(admin, staff.id, staff.full_name, courseId);
   }
 
   revalidatePath("/training", "layout");
@@ -101,11 +99,12 @@ export async function completeLesson(
 }
 
 async function notifySignoffIfReady(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
-  userId: string,
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  staffId: string,
+  staffName: string,
   courseId: string,
 ) {
-  const { data: course } = await supabase
+  const { data: course } = await admin
     .from("training_courses")
     .select(
       "id, title, requires_signoff, lessons:training_lessons(id, is_active)",
@@ -123,10 +122,10 @@ async function notifySignoffIfReady(
   }).lessons ?? []).filter((l) => l.is_active);
   if (lessons.length === 0) return;
 
-  const { data: done } = await supabase
+  const { data: done } = await admin
     .from("training_progress")
     .select("lesson_id")
-    .eq("user_id", userId)
+    .eq("staff_id", staffId)
     .in(
       "lesson_id",
       lessons.map((l) => l.id),
@@ -136,16 +135,14 @@ async function notifySignoffIfReady(
   );
   if (doneIds.size < lessons.length) return;
 
-  const { data: existingSignoff } = await supabase
+  const { data: existingSignoff } = await admin
     .from("training_signoffs")
     .select("id")
-    .eq("user_id", userId)
+    .eq("staff_id", staffId)
     .eq("course_id", courseId)
     .maybeSingle();
   if (existingSignoff) return;
 
-  // Notify every manager-role profile.
-  const admin = createSupabaseAdminClient();
   const { data: managers } = await admin
     .from("profiles")
     .select("id")
@@ -160,12 +157,11 @@ async function notifySignoffIfReady(
   const title =
     (course as { title?: string | null }).title ?? "Training course";
   for (const m of managers as { id: string }[]) {
-    if (m.id === userId) continue;
     await notify({
       recipientId: m.id,
       kind: "training_signoff_requested",
       title: "Sign-off requested",
-      body: title,
+      body: `${staffName} · ${title}`,
       link: "/training/progress",
       sourceType: "training_course",
       sourceId: courseId,
@@ -174,7 +170,7 @@ async function notifySignoffIfReady(
 }
 
 // ---------------------------------------------------------------------------
-// Quiz submission (server-graded)
+// Quiz submission — kiosk staff
 // ---------------------------------------------------------------------------
 
 const quizSubmitSchema = z.object({
@@ -202,16 +198,15 @@ export interface QuizSubmitResult {
 export async function submitQuiz(
   raw: z.input<typeof quizSubmitSchema>,
 ): Promise<QuizSubmitResult | { error: string }> {
-  const { supabase, userId, error: authError } = await requireUser();
-  if (authError) return { error: authError };
-
+  const staff = await requireKioskStaff();
   const parsed = quizSubmitSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const v = parsed.data;
 
-  const { data: quiz, error: quizErr } = await supabase
+  const admin = createSupabaseAdminClient();
+  const { data: quiz, error: quizErr } = await admin
     .from("training_quizzes")
     .select(
       "*, questions:training_quiz_questions(*, options:training_quiz_options(*))",
@@ -238,12 +233,11 @@ export async function submitQuiz(
     }
   ).questions ?? [];
 
-  // Retry-limit check.
   if (quiz.retry_limit > 0) {
-    const { count } = await supabase
+    const { count } = await admin
       .from("training_quiz_attempts")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
+      .eq("staff_id", staff.id)
       .eq("quiz_id", v.quizId);
     if ((count ?? 0) >= quiz.retry_limit) {
       return { error: "Max attempts reached" };
@@ -281,11 +275,11 @@ export async function submitQuiz(
     : 0;
   const passed = score >= quiz.passing_score;
 
-  const { data: attempt, error: insertErr } = await supabase
+  const { data: attempt, error: insertErr } = await admin
     .from("training_quiz_attempts")
     .insert({
       quiz_id: v.quizId,
-      user_id: userId,
+      staff_id: staff.id,
       score,
       passed,
       answers: v.answers,
@@ -302,16 +296,18 @@ export async function submitQuiz(
     verb: passed ? "completed" : "updated",
     objectType: "training_quiz",
     objectId: v.quizId,
-    summary: passed ? `Passed quiz · ${score}%` : `Quiz attempt · ${score}%`,
-    metadata: { score, passed },
+    summary: passed
+      ? `${staff.full_name} passed · ${score}%`
+      : `${staff.full_name} attempt · ${score}%`,
+    metadata: { score, passed, staff_id: staff.id },
   });
 
   let attemptsRemaining: number | null = null;
   if (quiz.retry_limit > 0) {
-    const { count } = await supabase
+    const { count } = await admin
       .from("training_quiz_attempts")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
+      .eq("staff_id", staff.id)
       .eq("quiz_id", v.quizId);
     attemptsRemaining = Math.max(0, quiz.retry_limit - (count ?? 0));
   }
@@ -321,11 +317,11 @@ export async function submitQuiz(
 }
 
 // ---------------------------------------------------------------------------
-// Path assignment + auto-assign by role
+// Path assignment — manager actions
 // ---------------------------------------------------------------------------
 
 const assignPathSchema = z.object({
-  userId: z.string().uuid(),
+  staffId: z.string().uuid(),
   pathId: z.string().uuid(),
   dueDate: z
     .string()
@@ -334,7 +330,7 @@ const assignPathSchema = z.object({
     .nullable(),
 });
 
-export async function assignPathToUser(
+export async function assignPathToStaff(
   raw: z.input<typeof assignPathSchema>,
 ) {
   const { supabase, userId, error: authError } = await requireManager();
@@ -347,16 +343,16 @@ export async function assignPathToUser(
   const v = parsed.data;
 
   const { data, error } = await supabase
-    .from("user_training_paths")
+    .from("staff_training_paths")
     .upsert(
       {
-        user_id: v.userId,
+        staff_id: v.staffId,
         path_id: v.pathId,
         assigned_by: userId,
         assigned_reason: "manual",
         due_date: v.dueDate ?? null,
       },
-      { onConflict: "user_id,path_id" },
+      { onConflict: "staff_id,path_id" },
     )
     .select("*, path:training_paths(id, name)")
     .single();
@@ -369,49 +365,40 @@ export async function assignPathToUser(
     (data as { path?: { name?: string | null } | null }).path?.name ?? "Path";
   await logActivity({
     verb: "created",
-    objectType: "user_training_path",
+    objectType: "staff_training_path",
     objectId: data.id,
     summary: pathName,
+    metadata: { staff_id: v.staffId },
   });
 
-  if (v.userId !== userId) {
-    await notify({
-      recipientId: v.userId,
-      kind: "training_path_assigned",
-      title: "New training assigned",
-      body: pathName,
-      link: "/training",
-      sourceType: "user_training_path",
-      sourceId: data.id,
-    });
-  }
-
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { ok: true };
 }
 
-export async function unassignPath(userPathId: string) {
+export async function unassignPath(staffPathId: string) {
   const { supabase, error: authError } = await requireManager();
   if (authError) return { error: authError };
   const { error } = await supabase
-    .from("user_training_paths")
+    .from("staff_training_paths")
     .delete()
-    .eq("id", userPathId);
+    .eq("id", staffPathId);
   if (error) return { error: error.message };
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { ok: true };
 }
 
 const autoAssignSchema = z.object({
-  userId: z.string().uuid(),
-  role: z.enum(ROLES as [string, ...string[]]),
+  staffId: z.string().uuid(),
+  staffType: z.enum(TRAINING_STAFF_TYPES as [string, ...string[]]),
 });
 
 /**
- * Find every active path that targets the user's role and assign them to it,
- * skipping any path they already hold. Returns how many paths were added.
+ * For a given staff member's type, assign every active path that targets
+ * that type. Returns how many paths were added.
  */
-export async function autoAssignPathsByRole(
+export async function autoAssignPathsByStaffType(
   raw: z.input<typeof autoAssignSchema>,
 ) {
   const { supabase, userId, error: authError } = await requireManager();
@@ -427,28 +414,27 @@ export async function autoAssignPathsByRole(
     .from("training_paths")
     .select("id, name, course_interval_days, path_courses:training_path_courses(id)")
     .eq("is_active", true)
-    .contains("target_roles", [v.role]);
+    .contains("target_staff_types", [v.staffType]);
 
   if (!paths || paths.length === 0) return { added: 0 };
 
   const { data: existing } = await supabase
-    .from("user_training_paths")
+    .from("staff_training_paths")
     .select("path_id")
-    .eq("user_id", v.userId);
+    .eq("staff_id", v.staffId);
   const already = new Set((existing ?? []).map((r) => r.path_id as string));
 
   const toInsert = paths
     .filter((p) => !already.has(p.id as string))
     .map((p) => {
       const moduleCount = (p.path_courses as { id: string }[] | null)?.length ?? 0;
-      const intervalDays =
-        (p.course_interval_days as number | null) ?? 7;
+      const intervalDays = (p.course_interval_days as number | null) ?? 7;
       const dueAt =
         moduleCount > 0
           ? new Date(Date.now() + moduleCount * intervalDays * 86_400_000)
           : null;
       return {
-        user_id: v.userId,
+        staff_id: v.staffId,
         path_id: p.id as string,
         assigned_by: userId,
         assigned_reason: "role" as const,
@@ -458,27 +444,28 @@ export async function autoAssignPathsByRole(
 
   if (toInsert.length === 0) return { added: 0 };
 
-  const { error } = await supabase.from("user_training_paths").insert(toInsert);
+  const { error } = await supabase.from("staff_training_paths").insert(toInsert);
   if (error) return { error: error.message };
 
   await logActivity({
     verb: "created",
-    objectType: "user_training_path",
-    objectId: v.userId,
-    summary: `Auto-assigned ${toInsert.length} path(s) for ${v.role}`,
-    metadata: { role: v.role, count: toInsert.length },
+    objectType: "staff_training_path",
+    objectId: v.staffId,
+    summary: `Auto-assigned ${toInsert.length} path(s) for ${v.staffType}`,
+    metadata: { staff_type: v.staffType, count: toInsert.length },
   });
 
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { added: toInsert.length };
 }
 
 // ---------------------------------------------------------------------------
-// Sign-offs
+// Sign-offs — manager actions
 // ---------------------------------------------------------------------------
 
 const signoffSchema = z.object({
-  userId: z.string().uuid(),
+  staffId: z.string().uuid(),
   courseId: z.string().uuid(),
   notes: z.string().max(2000).optional().nullable(),
 });
@@ -497,13 +484,13 @@ export async function signOffCourse(raw: z.input<typeof signoffSchema>) {
     .from("training_signoffs")
     .upsert(
       {
-        user_id: v.userId,
+        staff_id: v.staffId,
         course_id: v.courseId,
         signed_by: userId,
         signed_at: new Date().toISOString(),
         notes: v.notes?.trim() || null,
       },
-      { onConflict: "user_id,course_id" },
+      { onConflict: "staff_id,course_id" },
     )
     .select("*, course:training_courses(id, title)")
     .single();
@@ -519,22 +506,11 @@ export async function signOffCourse(raw: z.input<typeof signoffSchema>) {
     objectType: "training_course",
     objectId: v.courseId,
     summary: courseTitle,
-    metadata: { user_id: v.userId },
+    metadata: { staff_id: v.staffId },
   });
 
-  if (v.userId !== userId) {
-    await notify({
-      recipientId: v.userId,
-      kind: "training_signed_off",
-      title: "You're signed off",
-      body: courseTitle,
-      link: "/training",
-      sourceType: "training_course",
-      sourceId: v.courseId,
-    });
-  }
-
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { ok: true };
 }
 
@@ -547,15 +523,16 @@ export async function removeSignoff(signoffId: string) {
     .eq("id", signoffId);
   if (error) return { error: error.message };
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
-// Certifications
+// Certifications — manager actions
 // ---------------------------------------------------------------------------
 
 const certSchema = z.object({
-  userId: z.string().uuid(),
+  staffId: z.string().uuid(),
   kind: z.string().min(1, "Kind is required").max(80),
   name: z.string().min(1, "Name is required").max(200),
   issuingBody: z.string().max(200).optional().nullable(),
@@ -583,7 +560,7 @@ export async function createCertification(raw: z.input<typeof certSchema>) {
     .from("certifications")
     .insert({
       created_by: userId,
-      user_id: v.userId,
+      staff_id: v.staffId,
       kind: v.kind.trim(),
       name: v.name.trim(),
       issuing_body: v.issuingBody?.trim() || null,
@@ -602,10 +579,12 @@ export async function createCertification(raw: z.input<typeof certSchema>) {
     verb: "created",
     objectType: "certification",
     objectId: data.id,
-    summary: `${v.name} for user`,
+    summary: `${v.name}`,
+    metadata: { staff_id: v.staffId },
   });
 
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { certification: data };
 }
 
@@ -618,5 +597,6 @@ export async function deleteCertification(id: string) {
     .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/training", "layout");
+  revalidatePath("/training/staff", "layout");
   return { ok: true };
 }

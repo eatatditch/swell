@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
   ClipboardCheck,
   Clock,
   GraduationCap,
@@ -20,35 +19,35 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/data/empty-state";
 import { LessonContent } from "@/components/training/lesson-content";
 import { ResourceList } from "@/components/training/resource-list";
-import { LessonSettingsDialog } from "@/components/training/admin/lesson-settings-dialog";
-import { QuestionEditor } from "@/components/training/admin/question-editor";
-import { QuizCreateButton } from "@/components/training/admin/quiz-create-button";
-import { ResourceEditor } from "@/components/training/admin/resource-editor";
-import { requireUser } from "@/lib/auth/get-user";
-import { canWriteContent } from "@/lib/server/training";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { MarkCompleteButton } from "@/components/training/mark-complete-button";
+import { QuizRunner } from "@/components/training/quiz-runner";
+import { requireKioskStaff } from "@/lib/server/training-staff";
+import { courseVisibleTo } from "@/lib/server/training";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import { formatDuration } from "@/lib/constants/training";
 import type {
   TrainingLesson,
   TrainingLessonResource,
   TrainingQuiz,
+  TrainingQuizAttempt,
   TrainingQuizOption,
   TrainingQuizQuestion,
 } from "@/lib/types/database";
 
-export default async function LessonPage({
+export const dynamic = "force-dynamic";
+
+export default async function KioskLessonPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const { profile } = await requireUser();
-  const isManager = canWriteContent(profile.role);
-  const supabase = createSupabaseServerClient();
+  const staff = await requireKioskStaff();
+  const admin = createSupabaseAdminClient();
 
-  const { data: lesson } = await supabase
+  const { data: lesson } = await admin
     .from("training_lessons")
     .select(
-      "*, course:training_courses(id, slug, title, requires_signoff, lessons:training_lessons(id, slug, title, position, is_active))",
+      "*, course:training_courses(id, slug, title, requires_signoff, applies_to_staff_types, lessons:training_lessons(id, slug, title, position, is_active))",
     )
     .eq("id", params.id)
     .eq("is_active", true)
@@ -62,6 +61,7 @@ export default async function LessonPage({
       slug: string;
       title: string;
       requires_signoff: boolean;
+      applies_to_staff_types: string[];
       lessons: {
         id: string;
         slug: string;
@@ -71,6 +71,10 @@ export default async function LessonPage({
       }[];
     };
   }).course;
+
+  if (!courseVisibleTo(course as never, staff.staff_type)) {
+    redirect("/learn/courses");
+  }
 
   const sequence = course.lessons
     .filter((l) => l.is_active)
@@ -82,23 +86,33 @@ export default async function LessonPage({
       ? sequence[currentIdx + 1]
       : null;
 
-  // This page is now a manager-only content preview. Staff take lessons
-  // through the kiosk at /learn/lessons/...
-  const [resourcesRes, quizRes] = await Promise.all([
-    supabase
+  const [progressRes, resourcesRes, quizRes, attemptsRes] = await Promise.all([
+    admin
+      .from("training_progress")
+      .select("lesson_id")
+      .eq("staff_id", staff.id)
+      .eq("lesson_id", lesson.id)
+      .maybeSingle(),
+    admin
       .from("training_lesson_resources")
       .select("*")
       .eq("lesson_id", lesson.id)
       .order("position"),
-    supabase
+    admin
       .from("training_quizzes")
       .select(
         "*, questions:training_quiz_questions(*, options:training_quiz_options(*))",
       )
       .eq("lesson_id", lesson.id)
       .maybeSingle(),
+    admin
+      .from("training_quiz_attempts")
+      .select("*")
+      .eq("staff_id", staff.id)
+      .order("completed_at", { ascending: false }),
   ]);
 
+  const completed = !!progressRes.data;
   const resources = (resourcesRes.data ?? []) as TrainingLessonResource[];
   const quiz = quizRes.data as
     | (TrainingQuiz & {
@@ -117,6 +131,11 @@ export default async function LessonPage({
       }));
   }
 
+  const attempts = (attemptsRes.data ?? []) as TrainingQuizAttempt[];
+  const quizAttempts = quiz
+    ? attempts.filter((a) => a.quiz_id === quiz.id)
+    : [];
+
   return (
     <>
       <PageHeader
@@ -124,7 +143,7 @@ export default async function LessonPage({
         description={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <Link
-              href={`/training/courses/${course.slug}`}
+              href={`/learn/courses/${course.slug}`}
               className="text-accent hover:underline"
             >
               {course.title}
@@ -138,19 +157,15 @@ export default async function LessonPage({
             <span className="text-muted-foreground">
               · Lesson {currentIdx + 1} of {sequence.length}
             </span>
-            <span className="text-muted-foreground">· Preview</span>
           </div>
         }
         action={
-          <div className="flex gap-2">
-            {isManager ? <LessonSettingsDialog lesson={lesson} /> : null}
-            <Link
-              href={`/training/courses/${course.slug}`}
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
-            >
-              <ArrowLeft className="h-4 w-4" /> Course
-            </Link>
-          </div>
+          <Link
+            href={`/learn/courses/${course.slug}`}
+            className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
+          >
+            <ArrowLeft className="h-4 w-4" /> Course
+          </Link>
         }
       />
 
@@ -170,65 +185,68 @@ export default async function LessonPage({
         </Card>
       ) : null}
 
-      {resources.length > 0 || isManager ? (
+      {resources.length > 0 ? (
         <Card className="mb-6">
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">Resources</CardTitle>
-              <CardDescription>
-                {isManager
-                  ? "Videos, PDFs, links. Open in a new tab."
-                  : "Open in a new tab."}
-              </CardDescription>
-            </div>
+          <CardHeader>
+            <CardTitle className="text-base">Resources</CardTitle>
+            <CardDescription>Open in a new tab.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isManager ? (
-              <ResourceEditor lessonId={lesson.id} resources={resources} />
+            <ResourceList resources={resources} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {quiz ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="h-4 w-4 text-accent" />
+              Knowledge check
+            </CardTitle>
+            <CardDescription>{quiz.title}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {quiz.questions.length === 0 ? (
+              <EmptyState
+                icon={GraduationCap}
+                title="No questions yet"
+                description="This quiz is being prepared."
+              />
             ) : (
-              <ResourceList resources={resources} />
+              <QuizRunner
+                quiz={{
+                  id: quiz.id,
+                  title: quiz.title,
+                  description: quiz.description,
+                  passingScore: quiz.passing_score,
+                  retryLimit: quiz.retry_limit,
+                }}
+                questions={quiz.questions}
+                attemptsTaken={quizAttempts.length}
+                bestScore={
+                  quizAttempts.length === 0
+                    ? null
+                    : Math.max(...quizAttempts.map((a) => a.score))
+                }
+              />
             )}
           </CardContent>
         </Card>
       ) : null}
 
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ClipboardCheck className="h-4 w-4 text-accent" />
-              Knowledge check
-            </CardTitle>
-            <CardDescription>
-              {quiz
-                ? isManager
-                  ? "Add or edit questions below."
-                  : "Staff take this quiz on the training kiosk."
-                : isManager
-                  ? "No quiz yet — add one to make this lesson testable."
-                  : "No quiz on this lesson."}
-            </CardDescription>
-          </div>
-          {isManager && !quiz ? (
-            <QuizCreateButton lessonId={lesson.id} />
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {quiz ? (
-            isManager ? (
-              <QuestionEditor quizId={quiz.id} questions={quiz.questions} />
-            ) : (
-              <QuizPreview quiz={quiz} />
-            )
-          ) : null}
-        </CardContent>
-      </Card>
-
       <div className="flex flex-wrap items-center justify-end gap-3">
+        <MarkCompleteButton
+          lessonId={lesson.id}
+          alreadyCompleted={completed}
+          nextHref={
+            next ? `/learn/lessons/${next.id}` : `/learn/courses/${course.slug}`
+          }
+        />
         <div className="flex items-center gap-2">
           {prev ? (
             <Link
-              href={`/training/lessons/${prev.id}`}
+              href={`/learn/lessons/${prev.id}`}
               className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" /> {prev.title}
@@ -236,62 +254,15 @@ export default async function LessonPage({
           ) : null}
           {next ? (
             <Link
-              href={`/training/lessons/${next.id}`}
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-deep"
+              href={`/learn/lessons/${next.id}`}
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
             >
               {next.title} <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : (
-            <Link
-              href={`/training/courses/${course.slug}`}
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-deep"
-            >
-              <CheckCircle2 className="h-4 w-4" /> Back to course
-            </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </>
-  );
-}
-
-function QuizPreview({
-  quiz,
-}: {
-  quiz: TrainingQuiz & {
-    questions: (TrainingQuizQuestion & { options: TrainingQuizOption[] })[];
-  };
-}) {
-  if (quiz.questions.length === 0) {
-    return (
-      <EmptyState
-        icon={GraduationCap}
-        title="No questions yet"
-        description="Add questions in the editor."
-      />
-    );
-  }
-  return (
-    <ol className="space-y-3 text-sm">
-      {quiz.questions.map((q, i) => (
-        <li key={q.id} className="rounded-lg border bg-card p-3">
-          <p className="font-medium">
-            {i + 1}. {q.prompt}
-          </p>
-          {q.options.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-muted-foreground">
-              {q.options.map((o) => (
-                <li key={o.id}>· {o.label}</li>
-              ))}
-            </ul>
-          ) : q.correct_text ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Short answer.
-            </p>
-          ) : null}
-        </li>
-      ))}
-    </ol>
   );
 }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, ClipboardCheck, Lock } from "lucide-react";
+import { CheckCircle2, ClipboardCheck } from "lucide-react";
 
 import {
   Card,
@@ -32,7 +32,7 @@ export default async function QuizzesIndexPage() {
   const isManager = canWriteContent(profile.role);
   const supabase = createSupabaseServerClient();
 
-  const [quizzesRes, attemptsRes, progressRes] = await Promise.all([
+  const [quizzesRes, attemptsRes] = await Promise.all([
     supabase
       .from("training_quizzes")
       .select(
@@ -43,12 +43,7 @@ export default async function QuizzesIndexPage() {
     supabase
       .from("training_quiz_attempts")
       .select("quiz_id, score, passed, completed_at")
-      .eq("user_id", profile.id)
       .order("completed_at", { ascending: false }),
-    supabase
-      .from("training_progress")
-      .select("lesson_id")
-      .eq("user_id", profile.id),
   ]);
 
   const quizzes = ((quizzesRes.data ?? []) as unknown as QuizRow[]).filter(
@@ -78,12 +73,6 @@ export default async function QuizzesIndexPage() {
     attemptsByQuiz.set(a.quiz_id, cur);
   }
 
-  const completedLessons = new Set(
-    ((progressRes.data ?? []) as { lesson_id: string }[]).map(
-      (p) => p.lesson_id,
-    ),
-  );
-
   const grouped = new Map<string, QuizRow[]>();
   for (const q of quizzes) {
     const courseTitle = q.lesson?.course?.title ?? "Other";
@@ -96,7 +85,7 @@ export default async function QuizzesIndexPage() {
     <>
       <PageHeader
         title="Quizzes"
-        description="Every knowledge check in one place. Pass them to lock in what you learned."
+        description="Every knowledge check in the catalog, with team-wide attempt stats."
         action={
           <Link
             href="/training"
@@ -125,27 +114,15 @@ export default async function QuizzesIndexPage() {
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {list.map((q) => {
                   const summary = attemptsByQuiz.get(q.id);
-                  const lessonDone = q.lesson
-                    ? completedLessons.has(q.lesson.id)
-                    : false;
-                  // Quiz is takeable if the parent lesson is finished — same
-                  // gating logic that protects the inline knowledge check.
-                  const locked = !lessonDone && !isManager;
                   const href = q.lesson
                     ? `/training/lessons/${q.lesson.id}`
                     : "#";
                   return (
                     <li key={q.id}>
                       <Link
-                        href={locked ? "#" : href}
-                        aria-disabled={locked || undefined}
-                        onClick={
-                          locked ? (e) => e.preventDefault() : undefined
-                        }
+                        href={href}
                         className={cn(
-                          "block rounded-2xl border bg-card p-4 transition-colors",
-                          !locked && "hover:bg-muted/40",
-                          locked && "opacity-60",
+                          "block rounded-2xl border bg-card p-4 transition-colors hover:bg-muted/40",
                         )}
                       >
                         <div className="flex items-start gap-2">
@@ -157,9 +134,7 @@ export default async function QuizzesIndexPage() {
                                 : "bg-muted text-accent",
                             )}
                           >
-                            {locked ? (
-                              <Lock className="h-4 w-4" />
-                            ) : summary?.passed ? (
+                            {summary?.passed ? (
                               <CheckCircle2 className="h-4 w-4" />
                             ) : (
                               <ClipboardCheck className="h-4 w-4" />
@@ -171,13 +146,9 @@ export default async function QuizzesIndexPage() {
                               {q.lesson?.title ?? "—"}
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {locked
-                                ? "Finish the lesson first"
-                                : summary?.passed
-                                  ? `Passed · best ${summary.best}%`
-                                  : summary
-                                    ? `Best ${summary.best}% · ${summary.attempts} attempt${summary.attempts === 1 ? "" : "s"}`
-                                    : `Pass at ${q.passing_score}%${q.retry_limit > 0 ? ` · ${q.retry_limit} attempts` : ""}`}
+                              {summary
+                                ? `${summary.attempts} attempt${summary.attempts === 1 ? "" : "s"} · best ${summary.best}%`
+                                : `Pass at ${q.passing_score}%${q.retry_limit > 0 ? ` · ${q.retry_limit} attempts` : ""}`}
                             </p>
                           </div>
                         </div>
@@ -195,14 +166,15 @@ export default async function QuizzesIndexPage() {
         <CardHeader>
           <CardTitle className="text-base">How quizzes work</CardTitle>
           <CardDescription>
-            Open a quiz from the lesson it belongs to. Your best score counts.
+            Staff take quizzes on the training kiosk. This view shows
+            team-wide attempt stats.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="space-y-1 text-sm text-muted-foreground">
-            <li>· You can retry unless the quiz caps attempts (safety + alcohol do).</li>
             <li>· Server-graded — answers can&apos;t be tampered with from the browser.</li>
-            <li>· Passing a quiz doesn&apos;t auto-mark the lesson complete; mark the lesson done when you&apos;re ready.</li>
+            <li>· Best score across all attempts counts.</li>
+            <li>· Some quizzes cap attempts (safety + alcohol do).</li>
           </ul>
         </CardContent>
       </Card>

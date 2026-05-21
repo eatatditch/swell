@@ -1016,6 +1016,25 @@ export interface TrainingCategory {
   is_active: boolean;
 }
 
+export type TrainingStaffType = "foh" | "boh" | "management";
+
+export interface TrainingStaff {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  full_name: string;
+  staff_type: TrainingStaffType;
+  email: string | null;
+  phone: string | null;
+  location_id: string | null;
+  is_active: boolean;
+  start_date: string | null;
+  notes: string | null;
+  linked_profile_id: string | null;
+  last_seen_at: string | null;
+}
+
 export interface TrainingCourse {
   id: string;
   created_at: string;
@@ -1032,6 +1051,7 @@ export interface TrainingCourse {
   is_active: boolean;
   tags: string[];
   target_roles: Role[];
+  applies_to_staff_types: TrainingStaffType[];
 }
 
 export interface TrainingLesson {
@@ -1114,7 +1134,7 @@ export interface TrainingQuizAttempt {
   id: string;
   created_at: string;
   quiz_id: string;
-  user_id: string;
+  staff_id: string;
   score: number;
   passed: boolean;
   answers: Record<string, string>;
@@ -1131,6 +1151,7 @@ export interface TrainingPath {
   description: string | null;
   target_roles: Role[];
   target_department: string | null;
+  target_staff_types: TrainingStaffType[];
   course_interval_days: number;
   is_active: boolean;
   sort_order: number;
@@ -1146,16 +1167,16 @@ export interface TrainingPathCourse {
   is_required: boolean;
 }
 
-export type UserTrainingPathReason = "role" | "manual";
+export type StaffTrainingPathReason = "role" | "manual";
 
-export interface UserTrainingPath {
+export interface StaffTrainingPath {
   id: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  staff_id: string;
   path_id: string;
   assigned_by: string | null;
-  assigned_reason: UserTrainingPathReason;
+  assigned_reason: StaffTrainingPathReason;
   due_date: string | null;
   completed_at: string | null;
 }
@@ -1164,7 +1185,7 @@ export interface TrainingProgress {
   id: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  staff_id: string;
   lesson_id: string;
   completed_at: string;
   time_spent_seconds: number | null;
@@ -1174,7 +1195,7 @@ export interface TrainingSignoff {
   id: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  staff_id: string;
   course_id: string;
   signed_by: string;
   signed_at: string;
@@ -1199,7 +1220,7 @@ export interface Certification {
   created_at: string;
   updated_at: string;
   created_by: string | null;
-  user_id: string;
+  staff_id: string;
   kind: string;
   name: string;
   issuing_body: string | null;

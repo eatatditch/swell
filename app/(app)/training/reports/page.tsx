@@ -18,6 +18,7 @@ import {
   getCourseReports,
   getTeamProgress,
 } from "@/lib/server/training";
+import { TRAINING_STAFF_TYPE_LABELS } from "@/lib/constants/training";
 import { cn } from "@/lib/utils";
 
 export default async function TrainingReportsPage() {
@@ -29,8 +30,8 @@ export default async function TrainingReportsPage() {
     getCourseReports(),
   ]);
 
-  const totalAssigned = courses.reduce((n, r) => n + r.assignedUsers, 0);
-  const totalDone = courses.reduce((n, r) => n + r.completedUsers, 0);
+  const totalAssigned = courses.reduce((n, r) => n + r.assignedStaff, 0);
+  const totalDone = courses.reduce((n, r) => n + r.completedStaff, 0);
   const totalPendingSignoff = courses.reduce(
     (n, r) => n + r.pendingSignoffs,
     0,
@@ -104,8 +105,8 @@ export default async function TrainingReportsPage() {
               {team.length === 0 ? (
                 <EmptyState
                   icon={Users}
-                  title="No team yet"
-                  description="Invite people from /admin/users."
+                  title="No staff yet"
+                  description="Add training staff at /training/staff."
                 />
               ) : (
                 <div className="overflow-x-auto">
@@ -137,15 +138,15 @@ export default async function TrainingReportsPage() {
                               );
                         return (
                           <tr
-                            key={r.user.id}
+                            key={r.staff.id}
                             className="border-t border-border align-middle"
                           >
                             <td className="px-3 py-2">
                               <p className="font-medium">
-                                {r.user.full_name ?? r.user.email ?? "—"}
+                                {r.staff.full_name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {r.user.role}
+                                {TRAINING_STAFF_TYPE_LABELS[r.staff.staff_type]}
                               </p>
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
@@ -218,10 +219,10 @@ export default async function TrainingReportsPage() {
                     <tbody>
                       {courses.map((r) => {
                         const pct =
-                          r.assignedUsers === 0
+                          r.assignedStaff === 0
                             ? 0
                             : Math.round(
-                                (r.completedUsers / r.assignedUsers) * 100,
+                                (r.completedStaff / r.assignedStaff) * 100,
                               );
                         return (
                           <tr
@@ -242,10 +243,10 @@ export default async function TrainingReportsPage() {
                               ) : null}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
-                              {r.assignedUsers}
+                              {r.assignedStaff}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
-                              {r.completedUsers}
+                              {r.completedStaff}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
                               {pct}%

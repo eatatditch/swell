@@ -18,17 +18,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { signOffCourse } from "@/components/training/actions";
-import type { ProfileLite, TrainingCourse } from "@/lib/types/database";
+import { TRAINING_STAFF_TYPE_SHORT } from "@/lib/constants/training";
+import type { TrainingCourse, TrainingStaff } from "@/lib/types/database";
 
 interface SignoffPanelProps {
-  staff: ProfileLite[];
+  staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type">[];
   courses: TrainingCourse[];
 }
 
 export function SignoffPanel({ staff, courses }: SignoffPanelProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState("");
+  const [staffId, setStaffId] = useState("");
   const [courseId, setCourseId] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +37,13 @@ export function SignoffPanel({ staff, courses }: SignoffPanelProps) {
 
   function submit() {
     setError(null);
-    if (!userId || !courseId) {
+    if (!staffId || !courseId) {
       setError("Pick a person and a course");
       return;
     }
     startTransition(async () => {
       const res = await signOffCourse({
-        userId,
+        staffId,
         courseId,
         notes: notes || null,
       });
@@ -50,7 +51,7 @@ export function SignoffPanel({ staff, courses }: SignoffPanelProps) {
         setError(res.error);
         return;
       }
-      setUserId("");
+      setStaffId("");
       setCourseId("");
       setNotes("");
       setOpen(false);
@@ -82,13 +83,13 @@ export function SignoffPanel({ staff, courses }: SignoffPanelProps) {
             <select
               id="so-user"
               className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
             >
               <option value="">— Select —</option>
               {staff.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.full_name ?? p.email ?? "(no name)"}
+                  {`${p.full_name} (${TRAINING_STAFF_TYPE_SHORT[p.staff_type]})`}
                 </option>
               ))}
             </select>

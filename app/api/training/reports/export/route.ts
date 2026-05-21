@@ -6,7 +6,7 @@ import {
   getCourseReports,
   getTeamProgress,
 } from "@/lib/server/training";
-import { ROLE_LABELS } from "@/lib/constants/roles";
+import { TRAINING_STAFF_TYPE_LABELS } from "@/lib/constants/training";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
       rows.map((r) => [
         r.course.title,
         r.course.is_required ? "yes" : "no",
-        r.assignedUsers,
-        r.completedUsers,
-        r.assignedUsers
-          ? Math.round((r.completedUsers / r.assignedUsers) * 100)
+        r.assignedStaff,
+        r.completedStaff,
+        r.assignedStaff
+          ? Math.round((r.completedStaff / r.assignedStaff) * 100)
           : 0,
         r.pendingSignoffs,
       ]),
@@ -50,8 +50,7 @@ export async function GET(req: NextRequest) {
   const csv = toCsv(
     [
       "name",
-      "email",
-      "role",
+      "staff_type",
       "lessons_completed",
       "lessons_assigned",
       "completion_percent",
@@ -60,9 +59,8 @@ export async function GET(req: NextRequest) {
       "certs_expiring_30d",
     ],
     rows.map((r) => [
-      r.user.full_name ?? "",
-      r.user.email ?? "",
-      ROLE_LABELS[r.user.role] ?? r.user.role,
+      r.staff.full_name,
+      TRAINING_STAFF_TYPE_LABELS[r.staff.staff_type],
       r.completedLessons,
       r.totalLessons,
       r.totalLessons

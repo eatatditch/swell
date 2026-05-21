@@ -130,9 +130,11 @@ export const MODULES: ModuleDef[] = [
     visibleTo: ALL_ROLES,
     subNav: [
       { label: "Overview", href: "/training" },
+      { label: "Staff roster", href: "/training/staff" },
       { label: "Course library", href: "/training/courses" },
       { label: "Quizzes", href: "/training/quizzes" },
       { label: "Team progress", href: "/training/progress" },
+      { label: "Reports", href: "/training/reports" },
     ],
   },
   {

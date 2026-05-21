@@ -18,24 +18,24 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  assignPathToUser,
-  autoAssignPathsByRole,
+  assignPathToStaff,
+  autoAssignPathsByStaffType,
 } from "@/components/training/actions";
+import { TRAINING_STAFF_TYPE_SHORT } from "@/lib/constants/training";
 import type {
-  ProfileLite,
-  Role,
   TrainingPath,
+  TrainingStaff,
 } from "@/lib/types/database";
 
 interface AssignPathDialogProps {
-  staff: (ProfileLite & { role: Role })[];
+  staff: Pick<TrainingStaff, "id" | "full_name" | "staff_type">[];
   paths: TrainingPath[];
 }
 
 export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState<string>("");
+  const [staffId, setStaffId] = useState<string>("");
   const [pathId, setPathId] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +44,13 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
 
   function submit() {
     setError(null);
-    if (!userId || !pathId) {
+    if (!staffId || !pathId) {
       setError("Pick a person and a path");
       return;
     }
     startTransition(async () => {
-      const res = await assignPathToUser({
-        userId,
+      const res = await assignPathToStaff({
+        staffId,
         pathId,
         dueDate: dueDate || null,
       });
@@ -58,7 +58,7 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
         setError(res.error);
         return;
       }
-      setUserId("");
+      setStaffId("");
       setPathId("");
       setDueDate("");
       setOpen(false);
@@ -69,14 +69,17 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
   function runAuto() {
     setError(null);
     setAutoFeedback(null);
-    if (!userId) {
+    if (!staffId) {
       setError("Pick a person first");
       return;
     }
-    const user = staff.find((s) => s.id === userId);
-    if (!user) return;
+    const selected = staff.find((s) => s.id === staffId);
+    if (!selected) return;
     startTransition(async () => {
-      const res = await autoAssignPathsByRole({ userId, role: user.role });
+      const res = await autoAssignPathsByStaffType({
+        staffId: selected.id,
+        staffType: selected.staff_type,
+      });
       if ("error" in res && res.error) {
         setError(res.error);
         return;
@@ -84,8 +87,8 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
       const added = "added" in res ? (res.added ?? 0) : 0;
       setAutoFeedback(
         added > 0
-          ? `Added ${added} role-matched path(s) for ${user.full_name ?? user.email}.`
-          : `No new role-matched paths for ${user.role}.`,
+          ? `Added ${added} type-matched path(s) for ${selected.full_name}.`
+          : `No new type-matched paths for ${selected.staff_type}.`,
       );
       router.refresh();
     });
@@ -102,7 +105,7 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
         <DialogHeader>
           <DialogTitle>Assign training path</DialogTitle>
           <DialogDescription>
-            Pick a person and a path. Or use auto-assign to match by role.
+            Pick a person and a path. Or use auto-assign to match by staff type.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -111,13 +114,13 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
             <select
               id="ap-user"
               className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
             >
               <option value="">— Select —</option>
               {staff.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.full_name ?? p.email ?? "(no name)"} · {p.role}
+                  {`${p.full_name} (${TRAINING_STAFF_TYPE_SHORT[p.staff_type]})`}
                 </option>
               ))}
             </select>
@@ -171,10 +174,10 @@ export function AssignPathDialog({ staff, paths }: AssignPathDialogProps) {
             type="button"
             variant="outline"
             onClick={runAuto}
-            disabled={pending || !userId}
+            disabled={pending || !staffId}
             className="gap-1.5"
           >
-            <Sparkles className="h-4 w-4" /> Auto-assign by role
+            <Sparkles className="h-4 w-4" /> Auto-assign by staff type
           </Button>
           <Button onClick={submit} disabled={pending} variant="accent">
             {pending ? "Saving…" : "Assign"}
