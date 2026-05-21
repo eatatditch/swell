@@ -47,6 +47,8 @@ export function LessonContent({
 
 type InlineText = string;
 
+type QuickRefTone = "do" | "dont" | "escalate" | "language" | "remember";
+
 type Block =
   | { kind: "h2"; text: InlineText }
   | { kind: "h3"; text: InlineText }
@@ -58,6 +60,7 @@ type Block =
   | { kind: "steps"; items: InlineText[] }
   | { kind: "checklist"; items: { label: string; done: boolean }[] }
   | { kind: "takeaway"; title: string | null; inner: Block[] }
+  | { kind: "quickref"; tone: QuickRefTone; title: string | null; items: InlineText[] }
   | { kind: "compare"; head: InlineText[]; rows: InlineText[][] };
 
 function parse(input: string): Block[] {
@@ -144,6 +147,27 @@ function parseScope(
           kind: "compare",
           head: table?.head ?? [],
           rows: table?.rows ?? [],
+        });
+      } else if (name === "quickref") {
+        const firstWord = rest.split(/\s+/)[0]?.toLowerCase() ?? "";
+        const aliases: Record<string, QuickRefTone> = {
+          do: "do",
+          dont: "dont",
+          mistakes: "dont",
+          escalate: "escalate",
+          language: "language",
+          remember: "remember",
+        };
+        const tone: QuickRefTone = aliases[firstWord] ?? "remember";
+        const title =
+          firstWord in aliases
+            ? rest.slice(firstWord.length).trim() || null
+            : rest || null;
+        blocks.push({
+          kind: "quickref",
+          tone,
+          title,
+          items: itemsFromBlocks(scope.blocks),
         });
       } else {
         // Unknown — render inner as a generic group.
@@ -236,6 +260,19 @@ function stepsFromBlocks(blocks: Block[]): string[] {
         const m = line.match(/^\d+\.\s+(.+)$/);
         if (m) out.push(m[1]);
         else if (line.trim()) out.push(line.trim());
+      }
+    }
+  }
+  return out;
+}
+
+function itemsFromBlocks(blocks: Block[]): string[] {
+  const out: string[] = [];
+  for (const b of blocks) {
+    if (b.kind === "ul" || b.kind === "ol") out.push(...b.items);
+    else if (b.kind === "p") {
+      for (const line of b.text.split("\n")) {
+        if (line.trim()) out.push(line.trim());
       }
     }
   }
@@ -435,7 +472,90 @@ function renderBlock(block: Block, key: number | string): React.ReactNode {
           ))}
         </div>
       );
+    case "quickref":
+      return renderQuickRef(block, key);
   }
+}
+
+const QUICKREF_STYLE: Record<
+  QuickRefTone,
+  {
+    label: string;
+    bg: string;
+    border: string;
+    accent: string;
+    icon: typeof CheckSquare;
+  }
+> = {
+  do: {
+    label: "What good looks like",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    border: "border-l-emerald-500",
+    accent: "text-emerald-700 dark:text-emerald-300",
+    icon: CheckSquare,
+  },
+  dont: {
+    label: "Common mistakes",
+    bg: "bg-rose-50 dark:bg-rose-950/30",
+    border: "border-l-rose-500",
+    accent: "text-rose-700 dark:text-rose-300",
+    icon: AlertTriangle,
+  },
+  escalate: {
+    label: "Escalate to a manager",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-l-amber-500",
+    accent: "text-amber-700 dark:text-amber-300",
+    icon: AlertTriangle,
+  },
+  language: {
+    label: "Guest-facing language",
+    bg: "bg-sky-50 dark:bg-sky-950/30",
+    border: "border-l-sky-500",
+    accent: "text-sky-700 dark:text-sky-300",
+    icon: Info,
+  },
+  remember: {
+    label: "Remember this",
+    bg: "bg-violet-50 dark:bg-violet-950/30",
+    border: "border-l-violet-500",
+    accent: "text-violet-700 dark:text-violet-300",
+    icon: Lightbulb,
+  },
+};
+
+function renderQuickRef(
+  block: Extract<Block, { kind: "quickref" }>,
+  key: number | string,
+) {
+  const style = QUICKREF_STYLE[block.tone];
+  const Icon = style.icon;
+  return (
+    <aside
+      key={key}
+      className={cn(
+        "rounded-xl border-l-4 p-4 shadow-sm",
+        style.bg,
+        style.border,
+      )}
+    >
+      <div className={cn("mb-2 flex items-center gap-2", style.accent)}>
+        <Icon className="h-4 w-4 shrink-0" />
+        <p className="text-sm font-bold">{block.title ?? style.label}</p>
+      </div>
+      <ul className="space-y-1.5">
+        {block.items.map((item, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-2 text-sm text-foreground"
+          >
+            <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", style.accent)} />
+            <span>{renderInline(item)}</span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
 }
 
 function renderInline(text: string): React.ReactNode {
