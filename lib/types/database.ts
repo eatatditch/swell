@@ -1180,6 +1180,19 @@ export interface TrainingSignoff {
   notes: string | null;
 }
 
+export interface TrainingAnnouncement {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  title: string;
+  body: string | null;
+  pinned: boolean;
+  expires_at: string | null;
+  course_id: string | null;
+  path_id: string | null;
+}
+
 export interface Certification {
   id: string;
   created_at: string;

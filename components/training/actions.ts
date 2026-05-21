@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import { logActivity } from "@/lib/server/activity";
 import { notify } from "@/lib/server/notifications";
 import { canWriteContent } from "@/lib/server/training";
@@ -86,8 +87,90 @@ export async function completeLesson(
       .lesson?.title ?? "Lesson",
   });
 
+  // Fire a sign-off-request notification when the user just finished the
+  // final lesson of a course that requires manager sign-off.
+  const courseId =
+    (progress as { lesson?: { course_id?: string | null } | null }).lesson
+      ?.course_id ?? null;
+  if (courseId) {
+    await notifySignoffIfReady(supabase, userId, courseId);
+  }
+
   revalidatePath("/training", "layout");
   return { ok: true };
+}
+
+async function notifySignoffIfReady(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+  courseId: string,
+) {
+  const { data: course } = await supabase
+    .from("training_courses")
+    .select(
+      "id, title, requires_signoff, lessons:training_lessons(id, is_active)",
+    )
+    .eq("id", courseId)
+    .maybeSingle();
+  if (
+    !course ||
+    !(course as { requires_signoff?: boolean }).requires_signoff
+  ) {
+    return;
+  }
+  const lessons = ((course as {
+    lessons?: { id: string; is_active: boolean }[] | null;
+  }).lessons ?? []).filter((l) => l.is_active);
+  if (lessons.length === 0) return;
+
+  const { data: done } = await supabase
+    .from("training_progress")
+    .select("lesson_id")
+    .eq("user_id", userId)
+    .in(
+      "lesson_id",
+      lessons.map((l) => l.id),
+    );
+  const doneIds = new Set(
+    (done ?? []).map((p: { lesson_id: string }) => p.lesson_id),
+  );
+  if (doneIds.size < lessons.length) return;
+
+  const { data: existingSignoff } = await supabase
+    .from("training_signoffs")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .maybeSingle();
+  if (existingSignoff) return;
+
+  // Notify every manager-role profile.
+  const admin = createSupabaseAdminClient();
+  const { data: managers } = await admin
+    .from("profiles")
+    .select("id")
+    .in("role", [
+      "founder_admin",
+      "general_manager",
+      "service_manager",
+      "kitchen_manager",
+    ])
+    .eq("is_active", true);
+  if (!managers || managers.length === 0) return;
+  const title =
+    (course as { title?: string | null }).title ?? "Training course";
+  for (const m of managers as { id: string }[]) {
+    if (m.id === userId) continue;
+    await notify({
+      recipientId: m.id,
+      kind: "training_signoff_requested",
+      title: "Sign-off requested",
+      body: title,
+      link: "/training/progress",
+      sourceType: "training_course",
+      sourceId: courseId,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

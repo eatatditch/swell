@@ -22,6 +22,10 @@ import { LessonContent } from "@/components/training/lesson-content";
 import { ResourceList } from "@/components/training/resource-list";
 import { MarkCompleteButton } from "@/components/training/mark-complete-button";
 import { QuizRunner } from "@/components/training/quiz-runner";
+import { LessonSettingsDialog } from "@/components/training/admin/lesson-settings-dialog";
+import { QuestionEditor } from "@/components/training/admin/question-editor";
+import { QuizCreateButton } from "@/components/training/admin/quiz-create-button";
+import { ResourceEditor } from "@/components/training/admin/resource-editor";
 import { requireUser } from "@/lib/auth/get-user";
 import { canWriteContent } from "@/lib/server/training";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -193,12 +197,15 @@ export default async function LessonPage({
           </div>
         }
         action={
-          <Link
-            href={`/training/courses/${course.slug}`}
-            className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
-          >
-            <ArrowLeft className="h-4 w-4" /> Course
-          </Link>
+          <div className="flex gap-2">
+            {isManager ? <LessonSettingsDialog lesson={lesson} /> : null}
+            <Link
+              href={`/training/courses/${course.slug}`}
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
+            >
+              <ArrowLeft className="h-4 w-4" /> Course
+            </Link>
+          </div>
         }
       />
 
@@ -218,44 +225,67 @@ export default async function LessonPage({
         </Card>
       ) : null}
 
-      {resources.length > 0 ? (
+      {resources.length > 0 || isManager ? (
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-base">Resources</CardTitle>
-            <CardDescription>Open in a new tab.</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">Resources</CardTitle>
+              <CardDescription>
+                {isManager
+                  ? "Videos, PDFs, links. Open in a new tab."
+                  : "Open in a new tab."}
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
-            <ResourceList resources={resources} />
+            {isManager ? (
+              <ResourceEditor lessonId={lesson.id} resources={resources} />
+            ) : (
+              <ResourceList resources={resources} />
+            )}
           </CardContent>
         </Card>
       ) : null}
 
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ClipboardCheck className="h-4 w-4 text-accent" />
-            Knowledge check
-          </CardTitle>
-          <CardDescription>
-            {quiz
-              ? "Take the quiz to confirm you got it."
-              : "No quiz on this lesson — just mark complete when you're done."}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="h-4 w-4 text-accent" />
+              Knowledge check
+            </CardTitle>
+            <CardDescription>
+              {quiz
+                ? isManager
+                  ? "Add or edit questions below."
+                  : "Take the quiz to confirm you got it."
+                : isManager
+                  ? "No quiz yet — add one to make this lesson testable."
+                  : "No quiz on this lesson — just mark complete when you're done."}
+            </CardDescription>
+          </div>
+          {isManager && !quiz ? (
+            <QuizCreateButton lessonId={lesson.id} />
+          ) : null}
         </CardHeader>
         <CardContent>
           {quiz ? (
-            <QuizRunner
-              quiz={{
-                id: quiz.id,
-                title: quiz.title,
-                description: quiz.description,
-                passingScore: quiz.passing_score,
-                retryLimit: quiz.retry_limit,
-              }}
-              questions={quiz.questions}
-              attemptsTaken={attemptsTaken}
-              bestScore={bestScore}
-            />
+            isManager ? (
+              <QuestionEditor quizId={quiz.id} questions={quiz.questions} />
+            ) : (
+              <QuizRunner
+                quiz={{
+                  id: quiz.id,
+                  title: quiz.title,
+                  description: quiz.description,
+                  passingScore: quiz.passing_score,
+                  retryLimit: quiz.retry_limit,
+                }}
+                questions={quiz.questions}
+                attemptsTaken={attemptsTaken}
+                bestScore={bestScore}
+              />
+            )
           ) : null}
         </CardContent>
       </Card>

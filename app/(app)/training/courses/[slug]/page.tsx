@@ -11,10 +11,13 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/data/empty-state";
+import { CourseSettingsDialog } from "@/components/training/admin/course-settings-dialog";
 import { LessonEditor } from "@/components/training/admin/lesson-editor";
+import { LessonRowControls } from "@/components/training/admin/lesson-row-controls";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   canWriteContent,
+  getCategories,
   getCourseWithLessons,
 } from "@/lib/server/training";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -33,6 +36,8 @@ export default async function CourseDetailPage({
 
   const course = await getCourseWithLessons(params.slug);
   if (!course) notFound();
+
+  const categories = isManager ? await getCategories() : [];
 
   const supabase = createSupabaseServerClient();
   const lessonIds = course.lessons.map((l) => l.id);
@@ -82,12 +87,17 @@ export default async function CourseDetailPage({
           </div>
         }
         action={
-          <Link
-            href="/training/courses"
-            className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
-          >
-            <ArrowLeft className="h-4 w-4" /> Library
-          </Link>
+          <div className="flex gap-2">
+            {isManager ? (
+              <CourseSettingsDialog course={course} categories={categories} />
+            ) : null}
+            <Link
+              href="/training/courses"
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
+            >
+              <ArrowLeft className="h-4 w-4" /> Library
+            </Link>
+          </div>
         }
       />
 
@@ -212,20 +222,19 @@ export default async function CourseDetailPage({
                 const previous = i === 0 ? true : completed.has(course.lessons[i - 1].id);
                 const locked = !done && !previous && !isManager;
                 return (
-                  <li key={l.id}>
+                  <li
+                    key={l.id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border bg-card p-3 transition-colors",
+                      !locked && !isManager && "hover:bg-muted/40",
+                      locked && "opacity-60",
+                    )}
+                  >
                     <Link
                       href={locked ? "#" : `/training/lessons/${l.id}`}
                       aria-disabled={locked || undefined}
-                      onClick={
-                        locked
-                          ? (e) => e.preventDefault()
-                          : undefined
-                      }
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
-                        !locked && "hover:bg-muted/40",
-                        locked && "opacity-60",
-                      )}
+                      onClick={locked ? (e) => e.preventDefault() : undefined}
+                      className="flex min-w-0 flex-1 items-center gap-3"
                     >
                       <span className="text-xs font-mono text-muted-foreground">
                         {String(i + 1).padStart(2, "0")}
@@ -249,6 +258,13 @@ export default async function CourseDetailPage({
                         </span>
                       ) : null}
                     </Link>
+                    {isManager ? (
+                      <LessonRowControls
+                        courseId={course.id}
+                        lessonIds={course.lessons.map((x) => x.id)}
+                        index={i}
+                      />
+                    ) : null}
                   </li>
                 );
               })}
