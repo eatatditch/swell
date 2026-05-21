@@ -1361,6 +1361,9 @@ export interface ContentItem {
   approved_at: string | null;
   location_id: string | null;
   notes: string | null;
+  subject: string | null;
+  preheader: string | null;
+  target_tags: string[];
 }
 
 export interface CreativeBrief {
@@ -1472,4 +1475,59 @@ export interface CampaignPerformanceNote {
   result: string | null;
   observation: string | null;
   next_time: string | null;
+}
+
+export interface MarketingSubscriber {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  email: string | null;
+  phone: string | null;
+  name: string | null;
+  tags: string[];
+  source: string | null;
+  location_id: string | null;
+  opt_in_email: boolean;
+  opt_in_sms: boolean;
+  opt_out_email_at: string | null;
+  opt_out_sms_at: string | null;
+  last_emailed_at: string | null;
+  last_smsed_at: string | null;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export type SendChannel = "email" | "sms";
+export type SendProvider = "resend" | "twilio" | "test";
+export type SendStatus =
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "bounced"
+  | "opened"
+  | "clicked"
+  | "complained"
+  | "failed"
+  | "unsubscribed";
+
+export interface MarketingSend {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  content_item_id: string;
+  subscriber_id: string | null;
+  channel: SendChannel;
+  provider: SendProvider;
+  provider_message_id: string | null;
+  to_email: string | null;
+  to_phone: string | null;
+  status: SendStatus;
+  error_message: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  unsubscribed_at: string | null;
 }

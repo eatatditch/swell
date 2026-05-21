@@ -130,6 +130,9 @@ const contentItemSchema = z.object({
   scheduledFor: z.string().datetime().optional().nullable(),
   body: z.string().max(8000).optional().nullable(),
   caption: z.string().max(2200).optional().nullable(),
+  subject: z.string().max(300).optional().nullable(),
+  preheader: z.string().max(300).optional().nullable(),
+  targetTags: z.array(z.string().max(40)).default([]),
   assigneeId: z.string().uuid().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
@@ -153,6 +156,9 @@ export async function createContentItem(raw: z.input<typeof contentItemSchema>) 
       scheduled_for: v.scheduledFor ?? null,
       body: v.body?.trim() || null,
       caption: v.caption?.trim() || null,
+      subject: v.subject?.trim() || null,
+      preheader: v.preheader?.trim() || null,
+      target_tags: v.targetTags.map((t) => t.trim()).filter(Boolean),
       assignee_id: v.assigneeId ?? null,
       notes: v.notes?.trim() || null,
     })

@@ -17,6 +17,7 @@ export const MARKETING_NAV: MarketingNavItem[] = [
 
   { label: "Meta Ads", href: "/marketing/ads", group: "channels" },
   { label: "Email & SMS", href: "/marketing/email-sms", group: "channels" },
+  { label: "Subscribers", href: "/marketing/subscribers", group: "channels" },
   { label: "Local Content", href: "/marketing/local", group: "channels" },
 
   { label: "Private Events", href: "/marketing/private-events", group: "intel" },

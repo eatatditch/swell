@@ -5,7 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/data/empty-state";
 import { ContentItemDialog } from "@/components/marketing/content-item-dialog";
+import { SendNowDialog } from "@/components/marketing/send-now-dialog";
 import { listActiveCampaigns, listContentItems } from "@/lib/server/marketing";
+import { listAllTags } from "@/lib/server/marketing-subscribers";
 import {
   CONTENT_STATUS_LABELS,
   contentStatusTone,
@@ -36,9 +38,10 @@ function overloadedSmsWeeks(rows: ContentItem[]): string[] {
 }
 
 export default async function EmailSmsPage() {
-  const [items, campaigns] = await Promise.all([
+  const [items, campaigns, knownTags] = await Promise.all([
     listContentItems(),
     listActiveCampaigns(),
+    listAllTags(),
   ]);
   const emails = items.filter((i) => i.channel === "email");
   const smses = items.filter((i) => i.channel === "sms");
@@ -57,12 +60,14 @@ export default async function EmailSmsPage() {
               campaigns={campaigns}
               defaultChannel="email"
               channelFilter={["email"]}
+              knownTags={knownTags}
               triggerLabel="New email"
             />
             <ContentItemDialog
               campaigns={campaigns}
               defaultChannel="sms"
               channelFilter={["sms"]}
+              knownTags={knownTags}
               triggerLabel="New SMS"
             />
           </div>
@@ -115,9 +120,10 @@ export default async function EmailSmsPage() {
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-4 py-2 font-medium">Subject</th>
-                      <th className="px-4 py-2 font-medium">Campaign</th>
+                      <th className="px-4 py-2 font-medium">Tags</th>
                       <th className="px-4 py-2 font-medium">Send</th>
                       <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
@@ -127,15 +133,17 @@ export default async function EmailSmsPage() {
                         className="border-t border-border align-middle"
                       >
                         <td className="px-4 py-2">
-                          <p className="font-medium">{e.title}</p>
-                          {e.caption ? (
+                          <p className="font-medium">{e.subject ?? e.title}</p>
+                          {e.preheader ? (
                             <p className="text-xs text-muted-foreground line-clamp-1">
-                              {e.caption}
+                              {e.preheader}
                             </p>
                           ) : null}
                         </td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">
-                          {e.campaign_id ? "Yes" : "—"}
+                          {e.target_tags.length > 0
+                            ? e.target_tags.join(", ")
+                            : "everyone"}
                         </td>
                         <td className="px-4 py-2 text-xs tabular-nums">
                           {e.scheduled_for
@@ -151,6 +159,19 @@ export default async function EmailSmsPage() {
                           >
                             {CONTENT_STATUS_LABELS[e.status]}
                           </span>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {e.status !== "posted" ? (
+                            <SendNowDialog
+                              contentItemId={e.id}
+                              channel="email"
+                              title={e.subject ?? e.title}
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Sent
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -180,8 +201,9 @@ export default async function EmailSmsPage() {
                     <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <th className="px-4 py-2 font-medium">Message</th>
                       <th className="px-4 py-2 font-medium">Chars</th>
-                      <th className="px-4 py-2 font-medium">Send</th>
+                      <th className="px-4 py-2 font-medium">Tags</th>
                       <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
@@ -208,10 +230,10 @@ export default async function EmailSmsPage() {
                               </span>
                             ) : null}
                           </td>
-                          <td className="px-4 py-2 text-xs tabular-nums">
-                            {s.scheduled_for
-                              ? s.scheduled_for.slice(0, 16).replace("T", " ")
-                              : "—"}
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {s.target_tags.length > 0
+                              ? s.target_tags.join(", ")
+                              : "everyone"}
                           </td>
                           <td className="px-4 py-2">
                             <span
@@ -222,6 +244,19 @@ export default async function EmailSmsPage() {
                             >
                               {CONTENT_STATUS_LABELS[s.status]}
                             </span>
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {s.status !== "posted" ? (
+                              <SendNowDialog
+                                contentItemId={s.id}
+                                channel="sms"
+                                title={s.title}
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Sent
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
