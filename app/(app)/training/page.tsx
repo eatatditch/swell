@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/data/empty-state";
 import { CertificationList } from "@/components/training/certifications/certification-list";
 import { AnnouncementBoard } from "@/components/training/announcement-board";
+import { PalomaSearch } from "@/components/training/paloma-search";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   canWriteContent,
@@ -86,6 +87,10 @@ export default async function TrainingHomePage() {
           </div>
         }
       />
+
+      <section className="mb-6">
+        <PalomaSearch />
+      </section>
 
       {announcements.length > 0 || isManager ? (
         <section className="mb-6">

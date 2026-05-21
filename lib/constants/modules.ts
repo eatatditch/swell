@@ -128,6 +128,12 @@ export const MODULES: ModuleDef[] = [
     href: "/training",
     iconName: "GraduationCap",
     visibleTo: ALL_ROLES,
+    subNav: [
+      { label: "Overview", href: "/training" },
+      { label: "Course library", href: "/training/courses" },
+      { label: "Quizzes", href: "/training/quizzes" },
+      { label: "Team progress", href: "/training/progress" },
+    ],
   },
   {
     slug: "specs",
