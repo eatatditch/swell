@@ -4,22 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { modulesForRole } from "@/lib/constants/modules";
-import type { Role } from "@/lib/types/database";
+import type { ModuleDef } from "@/lib/constants/modules";
 
 interface SidebarNavProps {
-  role: Role;
+  modules: ModuleDef[];
   onNavigate?: () => void;
   navBadges?: Record<string, number>;
 }
 
-export function SidebarNav({ role, onNavigate, navBadges }: SidebarNavProps) {
+export function SidebarNav({ modules, onNavigate, navBadges }: SidebarNavProps) {
   const pathname = usePathname();
-  const items = modulesForRole(role);
 
   return (
     <nav className="flex flex-col gap-1 px-3 py-4">
-      {items.map((item) => {
+      {modules.map((item) => {
         const Icon = item.icon;
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
