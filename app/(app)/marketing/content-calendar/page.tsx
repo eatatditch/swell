@@ -1,13 +1,5 @@
-import { Megaphone } from "lucide-react";
-import { ModuleShell } from "@/components/layout/module-shell";
+import { redirect } from "next/navigation";
 
-export default function ContentCalendarPage() {
-  return (
-    <ModuleShell
-      title="Content Calendar"
-      description="Posts, stories, emails, and SMS planned out."
-      icon={Megaphone}
-      emptyTitle="Phase 8"
-    />
-  );
+export default function ContentCalendarRedirect() {
+  redirect("/marketing/content");
 }

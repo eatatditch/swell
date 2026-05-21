@@ -1255,3 +1255,221 @@ export interface EmailMessage {
   event_id: string | null;
   read_at: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Marketing (Phase 8)
+// ---------------------------------------------------------------------------
+
+export type CampaignStatus =
+  | "planning"
+  | "active"
+  | "paused"
+  | "completed"
+  | "cancelled";
+
+export type ContentChannel =
+  | "instagram"
+  | "facebook"
+  | "tiktok"
+  | "blog"
+  | "website"
+  | "email"
+  | "sms"
+  | "print"
+  | "other";
+
+export type ContentStatus =
+  | "drafting"
+  | "in_review"
+  | "approved"
+  | "scheduled"
+  | "posted"
+  | "archived";
+
+export type CreativeBriefStatus =
+  | "drafting"
+  | "in_review"
+  | "approved"
+  | "in_production"
+  | "delivered";
+
+export type ShotListStatus = "planning" | "ready" | "shot" | "delivered";
+
+export type AdChannel =
+  | "meta"
+  | "google"
+  | "tiktok"
+  | "print"
+  | "radio"
+  | "out_of_home"
+  | "other";
+
+export type AdRequestStatus =
+  | "requested"
+  | "in_design"
+  | "approved"
+  | "live"
+  | "completed"
+  | "cancelled";
+
+export type UGCTier = "community" | "nano" | "micro" | "mid" | "macro";
+
+export type UGCCollaborationStatus =
+  | "pitched"
+  | "agreed"
+  | "in_progress"
+  | "delivered"
+  | "posted"
+  | "paid"
+  | "cancelled";
+
+export interface MarketingCampaign {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  name: string;
+  theme: string | null;
+  goal: string | null;
+  description: string | null;
+  status: CampaignStatus;
+  starts_on: string | null;
+  ends_on: string | null;
+  owner_id: string | null;
+  location_id: string | null;
+  channels: ContentChannel[];
+  budget_cents: number | null;
+}
+
+export interface ContentItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  campaign_id: string | null;
+  title: string;
+  channel: ContentChannel;
+  body: string | null;
+  caption: string | null;
+  hashtags: string[];
+  asset_url: string | null;
+  status: ContentStatus;
+  scheduled_for: string | null;
+  posted_at: string | null;
+  assignee_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  location_id: string | null;
+  notes: string | null;
+}
+
+export interface CreativeBrief {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  campaign_id: string | null;
+  title: string;
+  audience: string | null;
+  objectives: string | null;
+  key_messages: string | null;
+  mandatories: string | null;
+  tone: string | null;
+  deliverables: string | null;
+  deadline_on: string | null;
+  status: CreativeBriefStatus;
+}
+
+export interface ShotList {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  campaign_id: string | null;
+  name: string;
+  shoot_date: string | null;
+  location_id: string | null;
+  photographer: string | null;
+  status: ShotListStatus;
+  notes: string | null;
+}
+
+export interface ShotListItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  shot_list_id: string;
+  position: number;
+  description: string;
+  hero: boolean;
+  props: string | null;
+  setup_notes: string | null;
+  is_done: boolean;
+  asset_url: string | null;
+}
+
+export interface AdRequest {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  campaign_id: string | null;
+  title: string;
+  channel: AdChannel;
+  goal: string | null;
+  audience: string | null;
+  copy: string | null;
+  budget_cents: number | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  status: AdRequestStatus;
+  requester_id: string | null;
+  assignee_id: string | null;
+  asset_url: string | null;
+  notes: string | null;
+}
+
+export interface UGCCreator {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  name: string;
+  handle: string | null;
+  platforms: string[];
+  tier: UGCTier;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export interface UGCCollaboration {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  creator_id: string;
+  campaign_id: string | null;
+  deliverable: string;
+  brief: string | null;
+  compensation: string | null;
+  due_on: string | null;
+  delivered_at: string | null;
+  posted_url: string | null;
+  status: UGCCollaborationStatus;
+  notes: string | null;
+}
+
+export interface CampaignPerformanceNote {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  campaign_id: string;
+  metric: string | null;
+  result: string | null;
+  observation: string | null;
+  next_time: string | null;
+}
