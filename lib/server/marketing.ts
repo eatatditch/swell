@@ -137,3 +137,18 @@ export async function listLocations(): Promise<{ id: string; name: string }[]> {
     .order("sort_order");
   return (data ?? []) as { id: string; name: string }[];
 }
+
+export async function listActiveCampaigns(): Promise<
+  { id: string; name: string }[]
+> {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from("marketing_campaigns")
+    .select("id, name, status")
+    .in("status", ["planning", "active"])
+    .order("starts_on", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  return ((data ?? []) as { id: string; name: string; status: string }[]).map(
+    (c) => ({ id: c.id, name: c.name }),
+  );
+}

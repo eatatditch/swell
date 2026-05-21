@@ -11,10 +11,10 @@ export default async function MarketingAssistantPage() {
     <>
       <PageHeader
         title="Wave — your marketing assistant"
-        description="Ask the questions you'd ask a sharp marketing director. Wave knows everything in SWELL."
+        description="Ask the questions you'd ask a sharp marketing director. Wave reads SWELL live."
         action={
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
-            <Sparkles className="h-3 w-3" /> Sample data · LLM not wired yet
+            <Sparkles className="h-3 w-3" /> Powered by Claude
           </span>
         }
       />
