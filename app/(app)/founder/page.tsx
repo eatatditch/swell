@@ -47,6 +47,10 @@ export default async function FounderPage() {
         description="The weekly review. Priorities, decisions, cash, accountability."
       />
 
+      <section className="mb-8">
+        <BrandPurposePanel />
+      </section>
+
       <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
           label="Active priorities"
@@ -84,7 +88,6 @@ export default async function FounderPage() {
           <TabsTrigger value="cash">Cash</TabsTrigger>
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="accountability">Accountability</TabsTrigger>
-          <TabsTrigger value="brand">Brand</TabsTrigger>
         </TabsList>
 
         <TabsContent value="priorities" className="space-y-4">
@@ -200,10 +203,6 @@ export default async function FounderPage() {
               <AccountabilityBoard rows={data.accountability} />
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="brand" className="space-y-4">
-          <BrandPurposePanel />
         </TabsContent>
       </Tabs>
     </>
