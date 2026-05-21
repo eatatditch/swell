@@ -35,6 +35,7 @@ interface Props {
   defaultChannel?: ContentChannel;
   triggerLabel?: string;
   channelFilter?: ContentChannel[];
+  knownTags?: string[];
 }
 
 export function ContentItemDialog({
@@ -42,6 +43,7 @@ export function ContentItemDialog({
   defaultChannel,
   triggerLabel,
   channelFilter,
+  knownTags = [],
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -55,6 +57,9 @@ export function ContentItemDialog({
   const [scheduledFor, setScheduledFor] = useState("");
   const [caption, setCaption] = useState("");
   const [body, setBody] = useState("");
+  const [subject, setSubject] = useState("");
+  const [preheader, setPreheader] = useState("");
+  const [targetTags, setTargetTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -67,6 +72,9 @@ export function ContentItemDialog({
     setScheduledFor("");
     setCaption("");
     setBody("");
+    setSubject("");
+    setPreheader("");
+    setTargetTags([]);
     setNotes("");
     setError(null);
   }
@@ -88,6 +96,9 @@ export function ContentItemDialog({
           : null,
         caption: caption || null,
         body: body || null,
+        subject: subject || null,
+        preheader: preheader || null,
+        targetTags,
         notes: notes || null,
       });
       if ("error" in res && res.error) {
@@ -196,6 +207,35 @@ export function ContentItemDialog({
               />
             </div>
           </div>
+          {channel === "email" ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="c-subject">Subject *</Label>
+                <Input
+                  id="c-subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="What lands in their inbox preview."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c-preheader">Preheader</Label>
+                <Input
+                  id="c-preheader"
+                  value={preheader}
+                  onChange={(e) => setPreheader(e.target.value)}
+                  placeholder="The line that shows after the subject."
+                />
+              </div>
+            </>
+          ) : null}
+          {isMessage ? (
+            <TagPicker
+              value={targetTags}
+              onChange={setTargetTags}
+              known={knownTags}
+            />
+          ) : null}
           {isMessage ? (
             <div className="space-y-2">
               <Label htmlFor="c-body">
@@ -256,5 +296,86 @@ export function ContentItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TagPicker({
+  value,
+  onChange,
+  known,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  known: string[];
+}) {
+  const [input, setInput] = useState("");
+  function add(tag: string) {
+    const t = tag.trim();
+    if (!t) return;
+    if (value.includes(t)) return;
+    onChange([...value, t]);
+    setInput("");
+  }
+  function remove(t: string) {
+    onChange(value.filter((v) => v !== t));
+  }
+  const suggestions = known.filter((k) => !value.includes(k)).slice(0, 8);
+  return (
+    <div className="space-y-2">
+      <Label>Audience tags</Label>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2">
+        {value.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent"
+          >
+            {t}
+            <button
+              type="button"
+              onClick={() => remove(t)}
+              className="text-accent/60 hover:text-accent"
+              aria-label={`Remove ${t}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              add(input);
+            } else if (e.key === "Backspace" && !input && value.length > 0) {
+              remove(value[value.length - 1]);
+            }
+          }}
+          placeholder="Type a tag + enter…"
+          className="flex-1 min-w-[120px] bg-transparent text-xs outline-none"
+        />
+      </div>
+      {suggestions.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Suggested:
+          </span>
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => add(s)}
+              className="rounded-full border border-input bg-card px-2 py-0.5 text-[11px] hover:bg-muted"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <p className="text-[11px] text-muted-foreground">
+        Empty means send to <strong>everyone</strong> with the right channel
+        consent. Any tag match counts (OR).
+      </p>
+    </div>
   );
 }
