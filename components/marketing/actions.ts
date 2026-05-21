@@ -178,6 +178,45 @@ export async function updateContentItemStatus(id: string, status: string) {
   return { ok: true };
 }
 
+export async function deleteContentItem(id: string) {
+  const ctx = await requireMarketer();
+  if (ctx.error) return { error: ctx.error };
+  const { error } = await ctx.supabase
+    .from("content_items")
+    .delete()
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/marketing/content", "layout");
+  revalidatePath("/marketing/email-sms", "layout");
+  return { ok: true };
+}
+
+export async function updateAdRequestStatus(id: string, status: string) {
+  const ctx = await requireMarketer();
+  if (ctx.error) return { error: ctx.error };
+  const ok = (AD_REQUEST_STATUSES as readonly string[]).includes(status);
+  if (!ok) return { error: "Invalid status" };
+  const { error } = await ctx.supabase
+    .from("ad_requests")
+    .update({ status })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/marketing/ads", "layout");
+  return { ok: true };
+}
+
+export async function deleteAdRequest(id: string) {
+  const ctx = await requireMarketer();
+  if (ctx.error) return { error: ctx.error };
+  const { error } = await ctx.supabase
+    .from("ad_requests")
+    .delete()
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/marketing/ads", "layout");
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Creative briefs
 // ---------------------------------------------------------------------------

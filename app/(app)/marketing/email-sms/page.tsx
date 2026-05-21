@@ -1,60 +1,21 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Mail, MessageSquare } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/data/empty-state";
 import { ContentItemDialog } from "@/components/marketing/content-item-dialog";
+import { listActiveCampaigns, listContentItems } from "@/lib/server/marketing";
 import {
-  EMAILS,
-  SMSES,
-  type EmailRow,
-  type SmsRow,
-} from "@/lib/data/marketing-sample";
-import { listActiveCampaigns } from "@/lib/server/marketing";
+  CONTENT_STATUS_LABELS,
+  contentStatusTone,
+} from "@/lib/constants/marketing";
+import type { ContentItem } from "@/lib/types/database";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function emailStatusTone(s: EmailRow["status"]): string {
-  switch (s) {
-    case "draft":
-      return "bg-muted text-muted-foreground";
-    case "ready":
-      return "bg-accent/15 text-accent";
-    case "scheduled":
-      return "bg-primary/15 text-primary";
-    case "sent":
-      return "bg-emerald-500/15 text-emerald-700";
-  }
-}
-
-function smsStatusTone(s: SmsRow["status"]): string {
-  switch (s) {
-    case "draft":
-      return "bg-muted text-muted-foreground";
-    case "scheduled":
-      return "bg-primary/15 text-primary";
-    case "sent":
-      return "bg-emerald-500/15 text-emerald-700";
-  }
-}
-
-function formatRevenue(n: number | undefined): string {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function formatSendAt(s: string): string {
-  return s.replace("T", " ");
-}
-
-// ISO week key for grouping by week
-function weekKey(dateStr: string): string {
-  const d = new Date(dateStr.replace(" ", "T"));
-  if (Number.isNaN(d.getTime())) return dateStr;
+function isoWeek(d: Date): string {
   const onejan = new Date(d.getFullYear(), 0, 1);
   const week = Math.ceil(
     ((d.getTime() - onejan.getTime()) / 86_400_000 + onejan.getDay() + 1) / 7,
@@ -62,23 +23,31 @@ function weekKey(dateStr: string): string {
   return `${d.getFullYear()}-W${week}`;
 }
 
-function findOverloadedWeeks(rows: SmsRow[]): string[] {
-  const counts: Record<string, number> = {};
-  for (const s of rows) {
-    const k = weekKey(s.sendAt);
-    counts[k] = (counts[k] ?? 0) + 1;
+function overloadedSmsWeeks(rows: ContentItem[]): string[] {
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.scheduled_for) continue;
+    const d = new Date(r.scheduled_for);
+    if (Number.isNaN(d.getTime())) continue;
+    const k = isoWeek(d);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  return Object.entries(counts)
-    .filter(([, c]) => c > 2)
-    .map(([k]) => k);
+  return [...counts.entries()].filter(([, c]) => c > 2).map(([k]) => k);
 }
 
 export default async function EmailSmsPage() {
-  const overloadedWeeks = findOverloadedWeeks(SMSES);
-  const campaigns = await listActiveCampaigns();
+  const [items, campaigns] = await Promise.all([
+    listContentItems(),
+    listActiveCampaigns(),
+  ]);
+  const emails = items.filter((i) => i.channel === "email");
+  const smses = items.filter((i) => i.channel === "sms");
+  const overloaded = overloadedSmsWeeks(
+    smses.filter((s) => s.status === "scheduled" || s.status === "approved"),
+  );
 
   return (
-    <div>
+    <>
       <PageHeader
         title="Email & SMS"
         description="Outbound campaigns to Surf Club, segments, and lapsed guests. SMS frequency is rate-limited per guest."
@@ -100,7 +69,7 @@ export default async function EmailSmsPage() {
         }
       />
 
-      {overloadedWeeks.length > 0 ? (
+      {overloaded.length > 0 ? (
         <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
@@ -109,12 +78,9 @@ export default async function EmailSmsPage() {
                 SMS frequency guardrail
               </div>
               <div className="mt-0.5 text-amber-700/90">
-                More than 2 SMS are scheduled in the same week
-                {overloadedWeeks.length > 1
-                  ? "s"
-                  : ""}{" "}
-                ({overloadedWeeks.join(", ")}). Risk of opt-outs — consider
-                staggering.
+                More than 2 SMS scheduled in the same week
+                {overloaded.length > 1 ? "s" : ""} ({overloaded.join(", ")}).
+                Risk of opt-outs — consider spacing them out.
               </div>
             </div>
           </CardContent>
@@ -123,120 +89,150 @@ export default async function EmailSmsPage() {
 
       <Tabs defaultValue="email">
         <TabsList>
-          <TabsTrigger value="email">Email ({EMAILS.length})</TabsTrigger>
-          <TabsTrigger value="sms">SMS ({SMSES.length})</TabsTrigger>
+          <TabsTrigger value="email" className="gap-1.5">
+            <Mail className="h-3.5 w-3.5" /> Email ({emails.length})
+          </TabsTrigger>
+          <TabsTrigger value="sms" className="gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" /> SMS ({smses.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="email">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-t border-border">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Campaign</th>
-                  <th className="px-3 py-2 font-medium">Subject</th>
-                  <th className="px-3 py-2 font-medium">Segment</th>
-                  <th className="px-3 py-2 font-medium">Send time</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 text-right font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {EMAILS.map((e) => (
-                  <tr
-                    key={e.name}
-                    className="border-b border-border/70 last:border-0"
-                  >
-                    <td className="px-3 py-3">
-                      <div className="font-medium text-foreground">{e.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {e.campaign}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-foreground">{e.subject}</td>
-                    <td className="px-3 py-3 text-muted-foreground">
-                      {e.segment}
-                    </td>
-                    <td className="px-3 py-3 tabular-nums text-muted-foreground">
-                      {formatSendAt(e.sendAt)}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${emailStatusTone(
-                          e.status,
-                        )}`}
+          {emails.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <EmptyState
+                  icon={Mail}
+                  title="No emails yet"
+                  description="Draft your first send with the New email button."
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="overflow-x-auto p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-4 py-2 font-medium">Subject</th>
+                      <th className="px-4 py-2 font-medium">Campaign</th>
+                      <th className="px-4 py-2 font-medium">Send</th>
+                      <th className="px-4 py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emails.map((e) => (
+                      <tr
+                        key={e.id}
+                        className="border-t border-border align-middle"
                       >
-                        {e.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-foreground">
-                      {formatRevenue(e.revenue)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-4 py-2">
+                          <p className="font-medium">{e.title}</p>
+                          {e.caption ? (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {e.caption}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground">
+                          {e.campaign_id ? "Yes" : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-xs tabular-nums">
+                          {e.scheduled_for
+                            ? e.scheduled_for.slice(0, 16).replace("T", " ")
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                              contentStatusTone(e.status),
+                            )}
+                          >
+                            {CONTENT_STATUS_LABELS[e.status]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="sms">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-t border-border">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Message</th>
-                  <th className="px-3 py-2 font-medium">Segment</th>
-                  <th className="px-3 py-2 font-medium">Send time</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 text-right font-medium">Clicks</th>
-                  <th className="px-3 py-2 text-right font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {SMSES.map((s, i) => {
-                  const preview =
-                    s.message.length > 80
-                      ? s.message.slice(0, 80).trimEnd() + "…"
-                      : s.message;
-                  return (
-                    <tr
-                      key={i}
-                      className="border-b border-border/70 last:border-0"
-                    >
-                      <td className="px-3 py-3">
-                        <div className="text-foreground">{preview}</div>
-                        <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                          {s.message.length} chars
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {s.segment}
-                      </td>
-                      <td className="px-3 py-3 tabular-nums text-muted-foreground">
-                        {formatSendAt(s.sendAt)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${smsStatusTone(
-                            s.status,
-                          )}`}
-                        >
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-foreground">
-                        {s.clicks ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-foreground">
-                        {formatRevenue(s.revenue)}
-                      </td>
+          {smses.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <EmptyState
+                  icon={MessageSquare}
+                  title="No SMS yet"
+                  description="Add a text with the New SMS button — keep it under 160 chars."
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="overflow-x-auto p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-4 py-2 font-medium">Message</th>
+                      <th className="px-4 py-2 font-medium">Chars</th>
+                      <th className="px-4 py-2 font-medium">Send</th>
+                      <th className="px-4 py-2 font-medium">Status</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {smses.map((s) => {
+                      const body = s.body ?? s.caption ?? "";
+                      return (
+                        <tr
+                          key={s.id}
+                          className="border-t border-border align-middle"
+                        >
+                          <td className="px-4 py-2">
+                            <p className="font-medium">{s.title}</p>
+                            {body ? (
+                              <p className="line-clamp-2 text-xs text-muted-foreground">
+                                {body}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-2 text-xs tabular-nums">
+                            {body.length}
+                            {body.length > 160 ? (
+                              <span className="ml-1 text-amber-700">
+                                · {Math.ceil(body.length / 160)} segs
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-2 text-xs tabular-nums">
+                            {s.scheduled_for
+                              ? s.scheduled_for.slice(0, 16).replace("T", " ")
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-2">
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                contentStatusTone(s.status),
+                              )}
+                            >
+                              {CONTENT_STATUS_LABELS[s.status]}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
-    </div>
+    </>
   );
 }
