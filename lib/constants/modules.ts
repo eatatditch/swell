@@ -20,11 +20,43 @@ export interface SubNavItem {
   href: string;
 }
 
+/**
+ * Module icons are referenced by name so a ModuleDef stays JSON-serializable
+ * across the server→client boundary. The actual component is looked up in
+ * MODULE_ICONS at render time.
+ */
+export type ModuleIconName =
+  | "LayoutDashboard"
+  | "Compass"
+  | "ClipboardList"
+  | "ChefHat"
+  | "GraduationCap"
+  | "BookOpen"
+  | "CalendarHeart"
+  | "Megaphone"
+  | "Heart"
+  | "BarChart3"
+  | "Settings";
+
+export const MODULE_ICONS: Record<ModuleIconName, LucideIcon> = {
+  LayoutDashboard,
+  Compass,
+  ClipboardList,
+  ChefHat,
+  GraduationCap,
+  BookOpen,
+  CalendarHeart,
+  Megaphone,
+  Heart,
+  BarChart3,
+  Settings,
+};
+
 export interface ModuleDef {
   slug: string;
   label: string;
   href: string;
-  icon: LucideIcon;
+  iconName: ModuleIconName;
   /** Roles allowed to see this module in the sidebar. */
   visibleTo: Role[];
   /** In-module sub-pages shown when this module is active. */
@@ -46,21 +78,21 @@ export const MODULES: ModuleDef[] = [
     slug: "dashboard",
     label: "Dashboard",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    iconName: "LayoutDashboard",
     visibleTo: ALL_ROLES,
   },
   {
     slug: "founder",
     label: "Founder View",
     href: "/founder",
-    icon: Compass,
+    iconName: "Compass",
     visibleTo: ["founder_admin"],
   },
   {
     slug: "daily-ops",
     label: "Daily Ops",
     href: "/daily-ops",
-    icon: ClipboardList,
+    iconName: "ClipboardList",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -81,7 +113,7 @@ export const MODULES: ModuleDef[] = [
     slug: "kitchen",
     label: "Kitchen",
     href: "/kitchen",
-    icon: ChefHat,
+    iconName: "ChefHat",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -94,21 +126,21 @@ export const MODULES: ModuleDef[] = [
     slug: "training",
     label: "Surf School",
     href: "/training",
-    icon: GraduationCap,
+    iconName: "GraduationCap",
     visibleTo: ALL_ROLES,
   },
   {
     slug: "specs",
     label: "Specs & Menus",
     href: "/specs",
-    icon: BookOpen,
+    iconName: "BookOpen",
     visibleTo: ALL_ROLES,
   },
   {
     slug: "catering",
     label: "Catering & Events",
     href: "/catering",
-    icon: CalendarHeart,
+    iconName: "CalendarHeart",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -136,7 +168,7 @@ export const MODULES: ModuleDef[] = [
     slug: "marketing",
     label: "Marketing",
     href: "/marketing",
-    icon: Megaphone,
+    iconName: "Megaphone",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -148,7 +180,7 @@ export const MODULES: ModuleDef[] = [
     slug: "guest-experience",
     label: "Guest Experience",
     href: "/guest-experience",
-    icon: Heart,
+    iconName: "Heart",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -161,7 +193,7 @@ export const MODULES: ModuleDef[] = [
     slug: "scoreboard",
     label: "Scoreboard",
     href: "/scoreboard",
-    icon: BarChart3,
+    iconName: "BarChart3",
     visibleTo: [
       "founder_admin",
       "general_manager",
@@ -175,7 +207,7 @@ export const MODULES: ModuleDef[] = [
     slug: "admin",
     label: "Admin",
     href: "/admin",
-    icon: Settings,
+    iconName: "Settings",
     visibleTo: ["founder_admin"],
   },
 ];

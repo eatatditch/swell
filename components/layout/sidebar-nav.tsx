@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import type { ModuleDef } from "@/lib/constants/modules";
+import { MODULE_ICONS, type ModuleDef } from "@/lib/constants/modules";
 
 interface SidebarNavProps {
   modules: ModuleDef[];
@@ -18,7 +18,7 @@ export function SidebarNav({ modules, onNavigate, navBadges }: SidebarNavProps) 
   return (
     <nav className="flex flex-col gap-1 px-3 py-4">
       {modules.map((item) => {
-        const Icon = item.icon;
+        const Icon = MODULE_ICONS[item.iconName];
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
