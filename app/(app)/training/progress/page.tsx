@@ -18,9 +18,11 @@ import { PathEditor } from "@/components/training/admin/path-editor";
 import { SignoffPanel } from "@/components/training/admin/signoff-panel";
 import { CertificationFormDialog } from "@/components/training/certifications/certification-form-dialog";
 import { CertificationList } from "@/components/training/certifications/certification-list";
+import { SignoffQueue } from "@/components/training/admin/signoff-queue";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   canWriteContent,
+  getPendingSignoffs,
   getTeamProgress,
 } from "@/lib/server/training";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -47,8 +49,10 @@ export default async function TrainingProgressPage() {
   if (!canWriteContent(profile.role)) redirect("/training");
 
   const supabase = createSupabaseServerClient();
-  const [rowsRes, pathsRes, coursesRes, staffRes, certsRes] = await Promise.all([
-    getTeamProgress(),
+  const [rowsRes, pendingSignoffs, pathsRes, coursesRes, staffRes, certsRes] =
+    await Promise.all([
+      getTeamProgress(),
+      getPendingSignoffs(),
     supabase
       .from("training_paths")
       .select(
@@ -97,14 +101,39 @@ export default async function TrainingProgressPage() {
         title="Team progress"
         description="Who's behind, who's on track, what's expiring."
         action={
-          <Link
-            href="/training"
-            className="inline-flex h-9 items-center rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
-          >
-            Back to Surf School
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/training/reports"
+              className="inline-flex h-9 items-center rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
+            >
+              Reports
+            </Link>
+            <Link
+              href="/training"
+              className="inline-flex h-9 items-center rounded-full border border-input bg-card px-4 text-sm font-semibold hover:bg-muted"
+            >
+              Back to Surf School
+            </Link>
+          </div>
         }
       />
+
+      {pendingSignoffs.length > 0 ? (
+        <Card className="mb-6 border-amber-300 bg-amber-50/40 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="text-base">
+              Sign-off requests · {pendingSignoffs.length}
+            </CardTitle>
+            <CardDescription>
+              These people finished every lesson of a course that requires
+              your sign-off.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SignoffQueue requests={pendingSignoffs} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat

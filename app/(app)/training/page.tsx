@@ -18,9 +18,11 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/data/empty-state";
 import { CertificationList } from "@/components/training/certifications/certification-list";
+import { AnnouncementBoard } from "@/components/training/announcement-board";
 import { requireUser } from "@/lib/auth/get-user";
 import {
   canWriteContent,
+  getActiveAnnouncements,
   getUserTrainingOverview,
 } from "@/lib/server/training";
 import { formatDuration } from "@/lib/constants/training";
@@ -29,7 +31,10 @@ import { ROLE_LABELS } from "@/lib/constants/roles";
 export default async function TrainingHomePage() {
   const { profile } = await requireUser();
   const isManager = canWriteContent(profile.role);
-  const overview = await getUserTrainingOverview(profile.id);
+  const [overview, announcements] = await Promise.all([
+    getUserTrainingOverview(profile.id),
+    getActiveAnnouncements(5),
+  ]);
 
   let totalCourses = 0;
   let completedCourses = 0;
@@ -81,6 +86,15 @@ export default async function TrainingHomePage() {
           </div>
         }
       />
+
+      {announcements.length > 0 || isManager ? (
+        <section className="mb-6">
+          <AnnouncementBoard
+            announcements={announcements}
+            canManage={isManager}
+          />
+        </section>
+      ) : null}
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
