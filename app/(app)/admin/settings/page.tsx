@@ -11,6 +11,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { AssistantKbForm } from "@/components/admin/settings/assistant-kb-form";
 import { BrandForm } from "@/components/admin/settings/brand-form";
 import { HoursForm } from "@/components/admin/settings/hours-form";
 import { StripeSummary } from "@/components/admin/settings/stripe-summary";
@@ -55,6 +56,7 @@ export default async function AdminSettingsPage() {
         <TabsTrigger value="brand">Brand &amp; Email</TabsTrigger>
         <TabsTrigger value="hours">Hours</TabsTrigger>
         <TabsTrigger value="billing">Stripe</TabsTrigger>
+        <TabsTrigger value="paloma">Paloma KB</TabsTrigger>
       </TabsList>
 
       <TabsContent value="brand">
@@ -102,6 +104,21 @@ export default async function AdminSettingsPage() {
           </CardHeader>
           <CardContent>
             <StripeSummary locations={locations} settings={stripe} />
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="paloma">
+        <Card>
+          <CardHeader>
+            <CardTitle>Paloma&apos;s knowledge base</CardTitle>
+            <CardDescription>
+              Ditch business facts Paloma uses to answer questions on
+              /training. Goes alongside lesson content, not instead of it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AssistantKbForm settings={settings} />
           </CardContent>
         </Card>
       </TabsContent>

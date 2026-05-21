@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/get-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin-server";
 import {
+  updateAssistantKb,
   updateSystemSettings,
   upsertLocationHours,
 } from "@/lib/server/settings";
@@ -107,6 +108,25 @@ export async function updateLocationHoursAction(
       isClosed: d.isClosed,
     })),
   );
+  if ("error" in result) return result;
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+const assistantKbSchema = z.object({
+  assistantKb: z.string().max(50_000).optional().nullable(),
+});
+
+export async function updateAssistantKbAction(
+  input: z.input<typeof assistantKbSchema>,
+): Promise<{ ok: true } | { error: string }> {
+  await requireAdmin();
+  const parsed = assistantKbSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const value = parsed.data.assistantKb?.trim() || null;
+  const result = await updateAssistantKb(value);
   if ("error" in result) return result;
   revalidatePath("/admin/settings");
   return { ok: true };

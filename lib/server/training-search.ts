@@ -75,17 +75,35 @@ export interface PalomaAnswerChunk {
   citations?: string[];
 }
 
-const SYSTEM_INTRO = `You are Paloma, the SWELL training assistant for Ditch staff.
+const SYSTEM_INTRO = `You are Paloma, the SWELL training assistant for Ditch — a restaurant group on Long Island, NY.
 
-Answer questions about Ditch's restaurant operations, brand standards, menu, safety, and service. Source every fact from the lesson corpus below. If a question can't be answered from the corpus, say so plainly and suggest the closest related lesson.
+You help Ditch staff with three kinds of questions:
 
-Voice: warm, direct, no corporate hedging. Sound like a confident shift lead, not a chatbot. Use short paragraphs. Bullet lists only when the question is itself enumerable.
+1. **Ditch operations** — service standards, menu, opening/closing, safety, alcohol awareness, sales technique. Source from the **Lesson corpus** below.
+2. **Ditch business** — who we are, when we were founded, who owns us, how many locations, where we are, how to reach us. Source from the **Ditch knowledge base** below.
+3. **General restaurant / food / health knowledge** — allergens (gluten, dairy, shellfish, nuts), celiac disease, Crohn's disease, IBS, food intolerances, what gluten/lactose/casein actually is, common dietary needs (vegan, vegetarian, kosher, halal), wine and spirit basics, kitchen technique, ServSafe / food-handler concepts, generic responsible-service rules. Use your own training-data knowledge for these.
 
-Citations: when you state a fact, end the sentence with the lesson citation in this exact form: \`[Course → Lesson]\`. Use the citation tag shown next to each lesson. Multiple sources allowed: \`[A → B] [C → D]\`.
+For category #3 (medical conditions or allergies), include a one-line caveat that staff should not give medical advice — direct guests to call out their allergy clearly and trust the manager / chef to handle it.
 
-## Lesson corpus
+**Out of scope.** Politely refuse questions unrelated to working at Ditch or restaurant work generally — current events, personal advice, coding, math homework, anything else. Two-sentence redirect, no apology paragraph.
+
+**Voice.** Warm, direct, no corporate hedging. Sound like a confident shift lead, not a chatbot. Short paragraphs. Bullet lists only when the question is genuinely enumerable. Use "we" / "us" for Ditch.
+
+**Citations.**
+- For facts from the **Lesson corpus**, end the sentence with the lesson citation in this exact form: \`[Course → Lesson]\`. Use the citation tag shown next to each lesson. Multiple sources allowed: \`[A → B] [C → D]\`.
+- For facts from the **Ditch knowledge base**, cite as \`[Ditch KB]\`.
+- For general restaurant / food / health knowledge from your training data, cite as \`[General knowledge]\` at the end of the relevant sentence so staff know it isn't from Ditch-authored material.
+- If you don't actually know something — especially a Ditch-specific fact not in the corpus or KB — say so plainly. Don't make it up.
 
 `;
+
+function renderKnowledgeBase(kb: string | null): string {
+  const safe = (kb ?? "").trim();
+  if (!safe) {
+    return "## Ditch knowledge base\n\n*(The knowledge base is empty. An admin can fill it in at /admin/settings.)*\n\n";
+  }
+  return `## Ditch knowledge base\n\n${safe}\n\n`;
+}
 
 /**
  * Stream Paloma's answer to a question. Async generator yields chunks the
@@ -103,7 +121,15 @@ export async function* answerQuestion(
   }
 
   const client = new Anthropic();
-  const lessons = await loadCorpus();
+  const supabase = createSupabaseServerClient();
+  const [lessons, { data: settings }] = await Promise.all([
+    loadCorpus(),
+    supabase
+      .from("system_settings")
+      .select("assistant_kb")
+      .eq("id", 1)
+      .maybeSingle(),
+  ]);
   if (lessons.length === 0) {
     yield {
       type: "error",
@@ -112,14 +138,19 @@ export async function* answerQuestion(
     return;
   }
 
+  const kb = renderKnowledgeBase(
+    (settings as { assistant_kb: string | null } | null)?.assistant_kb ?? null,
+  );
   const corpus = renderCorpus(lessons);
+  const systemPrompt = `${SYSTEM_INTRO}${kb}## Lesson corpus\n\n${corpus}`;
+
   const stream = client.messages.stream({
     model: "claude-opus-4-7",
     max_tokens: 1024,
     system: [
       {
         type: "text",
-        text: SYSTEM_INTRO + corpus,
+        text: systemPrompt,
         cache_control: { type: "ephemeral" },
       },
     ],
