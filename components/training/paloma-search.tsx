@@ -15,9 +15,9 @@ interface PalomaChunk {
 
 const SAMPLE_QUESTIONS = [
   "How long do I have to greet a new table?",
-  "What goes in the Ditch Rita?",
-  "Steps to cut a guest off?",
-  "When do I escalate to a manager?",
+  "What is celiac disease and what foods should a celiac avoid?",
+  "Who owns Ditch and when were we founded?",
+  "What are the most common food allergies?",
 ];
 
 export function PalomaSearch() {
@@ -189,8 +189,11 @@ export function PalomaSearch() {
 }
 
 /**
- * Render Paloma's reply with citations highlighted. Citations look like
- * `[Course → Lesson]` — we lightly style them as inline chips.
+ * Render Paloma's reply with citations highlighted. Three citation shapes
+ * get chip styling:
+ *   [Course → Lesson]      — lesson corpus (accent)
+ *   [Ditch KB]             — knowledge base (primary)
+ *   [General knowledge]    — Paloma's own training data (muted)
  */
 function PalomaAnswerText({ text }: { text: string }) {
   const parts: React.ReactNode[] = [];
@@ -201,15 +204,18 @@ function PalomaAnswerText({ text }: { text: string }) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
-    const citation = match[1];
-    // Only treat as a citation if it looks like "X → Y".
-    if (citation.includes("→")) {
+    const citation = match[1].trim();
+    const chip = classifyCitation(citation);
+    if (chip) {
       parts.push(
         <span
           key={`cite-${match.index}`}
-          className="ml-0.5 inline-flex items-center rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent"
+          className={
+            "ml-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+            chip.className
+          }
         >
-          {citation}
+          {chip.label}
         </span>,
       );
     } else {
@@ -224,4 +230,23 @@ function PalomaAnswerText({ text }: { text: string }) {
       {parts}
     </p>
   );
+}
+
+function classifyCitation(
+  citation: string,
+): { label: string; className: string } | null {
+  if (citation.includes("→")) {
+    return { label: citation, className: "bg-accent/15 text-accent" };
+  }
+  const lower = citation.toLowerCase();
+  if (lower === "ditch kb" || lower === "kb") {
+    return { label: "Ditch KB", className: "bg-primary/15 text-primary" };
+  }
+  if (lower === "general knowledge" || lower === "general") {
+    return {
+      label: "General knowledge",
+      className: "bg-muted text-muted-foreground",
+    };
+  }
+  return null;
 }

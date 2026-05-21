@@ -69,6 +69,7 @@ export interface SystemSettings {
   default_email_signature: string | null;
   default_reply_to: string | null;
   default_deposit_cents: number;
+  assistant_kb: string | null;
   updated_at: string;
 }
 

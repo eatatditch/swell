@@ -64,23 +64,35 @@ interface UpdateSystemSettingsArgs {
   defaultEmailSignature: string | null;
   defaultReplyTo: string | null;
   defaultDepositCents: number;
+  assistantKb?: string | null;
 }
 
 export async function updateSystemSettings(
   args: UpdateSystemSettingsArgs,
 ): Promise<{ ok: true } | { error: string }> {
   const admin = createSupabaseAdminClient();
+  const patch: Record<string, unknown> = {
+    company_name: args.companyName,
+    logo_url: args.logoUrl,
+    primary_color: args.primaryColor,
+    default_email_from_name: args.defaultEmailFromName,
+    default_email_signature: args.defaultEmailSignature,
+    default_reply_to: args.defaultReplyTo,
+    default_deposit_cents: args.defaultDepositCents,
+  };
+  if (args.assistantKb !== undefined) patch.assistant_kb = args.assistantKb;
+  const { error } = await admin.from("system_settings").update(patch).eq("id", 1);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function updateAssistantKb(
+  assistantKb: string | null,
+): Promise<{ ok: true } | { error: string }> {
+  const admin = createSupabaseAdminClient();
   const { error } = await admin
     .from("system_settings")
-    .update({
-      company_name: args.companyName,
-      logo_url: args.logoUrl,
-      primary_color: args.primaryColor,
-      default_email_from_name: args.defaultEmailFromName,
-      default_email_signature: args.defaultEmailSignature,
-      default_reply_to: args.defaultReplyTo,
-      default_deposit_cents: args.defaultDepositCents,
-    })
+    .update({ assistant_kb: assistantKb })
     .eq("id", 1);
   if (error) return { error: error.message };
   return { ok: true };
