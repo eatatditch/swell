@@ -12,9 +12,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import type { Role } from "@/lib/types/database";
+import type { ModuleDef } from "@/lib/constants/modules";
 
-export function MobileNav({ role }: { role: Role }) {
+export function MobileNav({ modules }: { modules: ModuleDef[] }) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -38,7 +38,7 @@ export function MobileNav({ role }: { role: Role }) {
             SWELL
           </SheetTitle>
         </SheetHeader>
-        <SidebarNav role={role} onNavigate={() => setOpen(false)} />
+        <SidebarNav modules={modules} onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );

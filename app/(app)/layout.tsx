@@ -6,6 +6,7 @@ import { UnreadMailPoller } from "@/components/layout/unread-mail-poller";
 import { requireUser } from "@/lib/auth/get-user";
 import { ACTIVE_LOCATION_COOKIE } from "@/app/(app)/constants";
 import { countUnreadForCurrentUser } from "@/lib/server/inbox";
+import { getModulesForRole } from "@/lib/server/role-access";
 
 export default async function AppLayout({
   children,
@@ -13,7 +14,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const { profile, locations } = await requireUser();
-  const unreadMail = await countUnreadForCurrentUser();
+  const [unreadMail, modules] = await Promise.all([
+    countUnreadForCurrentUser(),
+    getModulesForRole(profile.role),
+  ]);
 
   const cookieStore = cookies();
   const stored = cookieStore.get(ACTIVE_LOCATION_COOKIE)?.value ?? null;
@@ -29,7 +33,7 @@ export default async function AppLayout({
     <div className="flex min-h-screen w-full bg-background">
       <UnreadMailPoller initialCount={unreadMail} />
       <Sidebar
-        role={profile.role}
+        modules={modules}
         navBadges={{ "/catering/mail": unreadMail }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -37,6 +41,7 @@ export default async function AppLayout({
           profile={profile}
           locations={locations}
           activeLocationId={activeLocationId}
+          modules={modules}
         />
         <main className="flex-1 px-4 py-8 md:px-8">{children}</main>
       </div>

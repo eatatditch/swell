@@ -5,55 +5,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { RoleMatrix } from "@/components/admin/roles/role-matrix";
+import { requireAdmin } from "@/lib/auth/get-user";
 import { MODULES } from "@/lib/constants/modules";
-import { ROLE_LABELS, ROLES } from "@/lib/constants/roles";
+import { resolveAccess } from "@/lib/server/role-access";
 
-export default function AdminRolesPage() {
+export default async function AdminRolesPage() {
+  await requireAdmin();
+  const { matrix, overrides } = await resolveAccess();
+  const modules = MODULES.map((m) => ({ slug: m.slug, label: m.label }));
+  const overrideKeys = new Set(
+    overrides.map((o) => `${o.role}::${o.module_slug}`),
+  );
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Roles</CardTitle>
         <CardDescription>
-          Read-only view of the role × module visibility matrix from
-          ROLE_PERMISSIONS.md. Editing roles arrives in Phase 12.
+          Module × role visibility. Toggles take effect immediately for new
+          page loads.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="border-b text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Module</th>
-                {ROLES.map((r) => (
-                  <th key={r} className="px-2 py-2 font-medium">
-                    {ROLE_LABELS[r]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {MODULES.map((m) => (
-                <tr key={m.slug} className="border-b last:border-0">
-                  <td className="py-2 pr-4 font-medium">{m.label}</td>
-                  {ROLES.map((r) => (
-                    <td key={r} className="px-2 py-2">
-                      {m.visibleTo.includes(r) ? (
-                        <span aria-label="visible">●</span>
-                      ) : (
-                        <span
-                          aria-label="hidden"
-                          className="text-muted-foreground/40"
-                        >
-                          ○
-                        </span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RoleMatrix
+          modules={modules}
+          matrix={matrix}
+          overrideKeys={overrideKeys}
+        />
       </CardContent>
     </Card>
   );
