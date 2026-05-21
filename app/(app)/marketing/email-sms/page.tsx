@@ -3,12 +3,14 @@ import { AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ContentItemDialog } from "@/components/marketing/content-item-dialog";
 import {
   EMAILS,
   SMSES,
   type EmailRow,
   type SmsRow,
 } from "@/lib/data/marketing-sample";
+import { listActiveCampaigns } from "@/lib/server/marketing";
 
 export const dynamic = "force-dynamic";
 
@@ -71,14 +73,31 @@ function findOverloadedWeeks(rows: SmsRow[]): string[] {
     .map(([k]) => k);
 }
 
-export default function EmailSmsPage() {
+export default async function EmailSmsPage() {
   const overloadedWeeks = findOverloadedWeeks(SMSES);
+  const campaigns = await listActiveCampaigns();
 
   return (
     <div>
       <PageHeader
         title="Email & SMS"
         description="Outbound campaigns to Surf Club, segments, and lapsed guests. SMS frequency is rate-limited per guest."
+        action={
+          <div className="flex gap-2">
+            <ContentItemDialog
+              campaigns={campaigns}
+              defaultChannel="email"
+              channelFilter={["email"]}
+              triggerLabel="New email"
+            />
+            <ContentItemDialog
+              campaigns={campaigns}
+              defaultChannel="sms"
+              channelFilter={["sms"]}
+              triggerLabel="New SMS"
+            />
+          </div>
+        }
       />
 
       {overloadedWeeks.length > 0 ? (

@@ -8,17 +8,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
+import { ContentItemDialog } from "@/components/marketing/content-item-dialog";
 import {
   CONTENT_CARDS,
   CONTENT_COLUMNS,
   CONTENT_COLUMN_LABELS,
   type ContentColumn,
 } from "@/lib/data/marketing-sample";
+import { listActiveCampaigns } from "@/lib/server/marketing";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContentEnginePage() {
+  const campaigns = await listActiveCampaigns();
   const byColumn = new Map<ContentColumn, typeof CONTENT_CARDS>();
   for (const c of CONTENT_CARDS) {
     const arr = byColumn.get(c.column) ?? [];
@@ -31,6 +34,7 @@ export default async function ContentEnginePage() {
       <PageHeader
         title="Content engine"
         description="Production board for every Reel, TikTok, story, email, and ad on the way out the door."
+        action={<ContentItemDialog campaigns={campaigns} />}
       />
 
       <section className="mb-6 flex flex-wrap gap-2">

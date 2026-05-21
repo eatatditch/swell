@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdRequestDialog } from "@/components/marketing/ad-request-dialog";
 import { META_ADS, type MetaAdRow } from "@/lib/data/marketing-sample";
+import { listActiveCampaigns } from "@/lib/server/marketing";
 
 export const dynamic = "force-dynamic";
 
@@ -105,14 +107,16 @@ function AdsTable({ rows }: { rows: MetaAdRow[] }) {
   );
 }
 
-export default function AdsPage() {
+export default async function AdsPage() {
   const filter = (s: MetaStatus) => META_ADS.filter((a) => a.status === s);
+  const campaigns = await listActiveCampaigns();
 
   return (
     <div>
       <PageHeader
         title="Meta Ads"
         description="Live spend, lead cost, and ROAS across every active set. Kill the losers, scale the winners."
+        action={<AdRequestDialog campaigns={campaigns} />}
       />
 
       <Tabs defaultValue="all">
